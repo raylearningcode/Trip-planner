@@ -161,6 +161,11 @@
 
         .page-header {
             margin-bottom: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
         }
 
         .page-title {
@@ -1113,15 +1118,15 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label">Destination</label>
-                        <input type="text" class="form-input" id="destination" value="Germany (Multi-City)" onchange="saveData(); renderAll();">
+                        <input type="text" class="form-input" id="destination" value="Germany (Multi-City)" onchange="onDestinationChange();">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Departure Date</label>
-                        <input type="date" class="form-input" id="departureDate" value="2027-06-01" onchange="saveData(); renderAll(); updateAllStats();">
+                        <input type="date" class="form-input" id="departureDate" value="2027-06-01" onchange="onTripDateChange()">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Return Date</label>
-                        <input type="date" class="form-input" id="returnDate" value="2027-06-14" onchange="saveData(); renderAll(); updateAllStats();">
+                        <input type="date" class="form-input" id="returnDate" value="2027-06-14" onchange="onTripDateChange()">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Travelers</label>
@@ -1356,8 +1361,13 @@
         <!-- Group Page -->
         <div class="page" id="group">
             <div class="page-header">
-                <h1 class="page-title">Travel Group</h1>
-                <p class="page-subtitle">Invite friends and manage your travel crew</p>
+                <div>
+                    <h1 class="page-title">Travel Group</h1>
+                    <p class="page-subtitle">Invite friends and manage your travel crew</p>
+                </div>
+                <button class="btn btn-primary" onclick="showNotificationModal()">
+                    📨 Send Notification
+                </button>
             </div>
 
             <!-- Group Stats -->
@@ -1904,7 +1914,38 @@
             }).eq('id', currentTrip);
         }
 
-        // Navigation
+        async function onTripDateChange() {
+            const oldDeparture = tripData.overview.departureDate;
+            const oldReturn = tripData.overview.returnDate;
+            
+            await saveData();
+            renderAll();
+            updateAllStats();
+            
+            const newDeparture = document.getElementById('departureDate').value;
+            const newReturn = document.getElementById('returnDate').value;
+            
+            // Notify if dates actually changed
+            if (oldDeparture !== newDeparture || oldReturn !== newReturn) {
+                await notifyMembersAboutChange('trip_dates_changed', {
+                    departure: newDeparture,
+                    return: newReturn
+                });
+            }
+        }
+        
+        async function onDestinationChange() {
+            const oldDest = tripData.overview.destination;
+            await saveData();
+            renderAll();
+            
+            const newDest = document.getElementById('destination').value;
+            if (oldDest !== newDest && newDest.trim()) {
+                await notifyMembersAboutChange('destination_changed', {
+                    destination: newDest
+                });
+            }
+        }
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -2148,6 +2189,22 @@
             renderBookings();
             saveData();
         }
+        
+        async function onBookingNameChange(idx, newName) {
+            const oldName = tripData.bookings[idx].name;
+            tripData.bookings[idx].name = newName;
+            
+            // Notify if name was just filled (meaningful booking added)
+            if (!oldName && newName.trim()) {
+                await saveData();
+                await notifyMembersAboutChange('booking_added', {
+                    type: tripData.bookings[idx].type,
+                    name: newName
+                });
+            } else {
+                await saveData();
+            }
+        }
 
         function deleteBooking(idx, btn) {
             if (btn.textContent === 'Delete') {
@@ -2174,7 +2231,7 @@
                                 `<option ${booking.type === t ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
                     </td>
-                    <td><input type="text" value="${booking.name}" onchange="tripData.bookings[${idx}].name = this.value; saveData()"></td>
+                    <td><input type="text" value="${booking.name}" onchange="onBookingNameChange(${idx}, this.value)"></td>
                     <td><input type="text" value="${booking.confirmation}" onchange="tripData.bookings[${idx}].confirmation = this.value; saveData()"></td>
                     <td><input type="datetime-local" value="${booking.datetime}" onchange="tripData.bookings[${idx}].datetime = this.value; saveData()"></td>
                     <td><input type="number" value="${booking.costEur || 0}" step="0.01" onchange="tripData.bookings[${idx}].costEur = parseFloat(this.value); saveData()"></td>
@@ -3691,11 +3748,170 @@
         }
         
         async function sendReminder(memberId, memberName) {
-            const message = prompt(`Send a reminder to ${memberName}:`, 'Hey! Just checking in about our upcoming trip. Have you had a chance to update your budget and packing list?');
-            if (!message) return;
+            // If called with specific member, pre-select them
+            showNotificationModal(memberId);
+        }
+        
+        function showNotificationModal(preSelectedId = null) {
+            const members = tripData.group.filter(m => m.user_id !== user.id); // Exclude self
             
-            await createNotification(currentTrip, [memberId], 'reminder', 'Trip Reminder', message);
-            showSuccessToast(`Reminder sent to ${memberName}!`);
+            if (members.length === 0) {
+                showErrorToast('No other members to notify');
+                return;
+            }
+            
+            const modalContent = `
+                <div style="max-width: 600px; width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h2 style="font-size: 24px; font-weight: 700; color: var(--text-primary);">📨 Send Notification</h2>
+                        <button onclick="closeModal()" style="background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary);">×</button>
+                    </div>
+                    
+                    <div style="margin-bottom: 24px;">
+                        <label style="display: block; margin-bottom: 12px; font-weight: 600; color: var(--text-primary);">Select Recipients</label>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <button onclick="selectAllMembers()" class="btn btn-secondary btn-sm">Select All</button>
+                            <button onclick="deselectAllMembers()" class="btn btn-secondary btn-sm">Deselect All</button>
+                        </div>
+                        <div style="max-height: 200px; overflow-y: auto; background: var(--bg-main); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                            ${members.map(m => `
+                                <label style="display: flex; align-items: center; gap: 12px; padding: 8px; cursor: pointer; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
+                                    <input type="checkbox" class="member-checkbox" data-user-id="${m.user_id}" ${m.user_id === preSelectedId ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
+                                    <div>
+                                        <div style="font-weight: 600; color: var(--text-primary);">${m.name || 'Unnamed'}</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">${m.email || ''}</div>
+                                    </div>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 24px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Notification Type</label>
+                        <select id="notifType" style="width: 100%; padding: 12px; background: var(--bg-main); border: 2px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px;">
+                            <option value="reminder">⏰ Reminder</option>
+                            <option value="trip_update">📝 Trip Update</option>
+                            <option value="budget_alert">💰 Budget Alert</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 24px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Message</label>
+                        <textarea id="notifMessage" placeholder="Type your message here..." style="width: 100%; min-height: 120px; padding: 12px; background: var(--bg-main); border: 2px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 14px; resize: vertical;"></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                        <button onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                        <button onclick="sendNotificationFromModal()" class="btn btn-primary">
+                            📨 Send Notification
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modalContent').innerHTML = modalContent;
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+        
+        function selectAllMembers() {
+            document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = true);
+        }
+        
+        function deselectAllMembers() {
+            document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = false);
+        }
+        
+        async function sendNotificationFromModal() {
+            const selectedMembers = Array.from(document.querySelectorAll('.member-checkbox:checked'))
+                .map(cb => cb.dataset.userId);
+            
+            if (selectedMembers.length === 0) {
+                showErrorToast('Please select at least one recipient');
+                return;
+            }
+            
+            const type = document.getElementById('notifType').value;
+            const message = document.getElementById('notifMessage').value.trim();
+            
+            if (!message) {
+                showErrorToast('Please enter a message');
+                return;
+            }
+            
+            const titles = {
+                'reminder': '⏰ Reminder',
+                'trip_update': '📝 Trip Update',
+                'budget_alert': '💰 Budget Alert'
+            };
+            
+            await createNotification(currentTrip, selectedMembers, type, titles[type], message);
+            
+            closeModal();
+            showSuccessToast(`Notification sent to ${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''}!`);
+        }
+        
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('modalContent').innerHTML = '';
+        }
+        
+        // Auto-notify members about important changes
+        async function notifyMembersAboutChange(changeType, details) {
+            // Get all members except current user
+            const { data: members } = await sb
+                .from('trip_members')
+                .select('user_id')
+                .eq('trip_id', currentTrip)
+                .neq('user_id', user.id);
+            
+            if (!members || members.length === 0) return;
+            
+            const { data: profile } = await sb.from('profiles').select('username').eq('id', user.id).maybeSingle();
+            const userName = profile?.username || 'Someone';
+            
+            const notifications = {
+                'trip_dates_changed': {
+                    type: 'trip_update',
+                    title: '📅 Trip Dates Changed',
+                    message: `${userName} updated the trip dates. New departure: ${details.departure || 'Not set'}, Return: ${details.return || 'Not set'}`
+                },
+                'destination_changed': {
+                    type: 'trip_update',
+                    title: '📍 Destination Changed',
+                    message: `${userName} changed the destination to: ${details.destination}`
+                },
+                'destination_added': {
+                    type: 'trip_update',
+                    title: '✨ New Destination Added',
+                    message: `${userName} added a new destination: ${details.city}, ${details.country}`
+                },
+                'itinerary_updated': {
+                    type: 'trip_update',
+                    title: '🗓️ Itinerary Updated',
+                    message: `${userName} updated the itinerary for Day ${details.day}`
+                },
+                'booking_added': {
+                    type: 'booking_added',
+                    title: '🎫 New Booking Added',
+                    message: `${userName} added a new booking: ${details.type} - ${details.name}`
+                },
+                'shared_expense_added': {
+                    type: 'trip_update',
+                    title: '💸 New Shared Expense',
+                    message: `${userName} added a shared expense: ${details.item} (€${details.amount})`
+                }
+            };
+            
+            const notif = notifications[changeType];
+            if (!notif) return;
+            
+            await createNotification(
+                currentTrip,
+                members.map(m => m.user_id),
+                notif.type,
+                notif.title,
+                notif.message
+            );
         }
 
         function toggleNotifications() {

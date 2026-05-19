@@ -3142,7 +3142,7 @@
             // Check authentication
             const { data: { session } } = await sb.auth.getSession();
             if (!session) {
-                window.location.href = 'index.html';
+                window.location.href = 'login.html';
                 return;
             }
             user = session.user;
@@ -3277,6 +3277,9 @@
                 .eq('status', 'pending')
                 .order('invited_at', { ascending: false });
             
+            console.log('Checking invites for:', user.email);
+            console.log('Found invites:', invites);
+            
             if (error) {
                 console.error('Load notifications error:', error);
                 return;
@@ -3389,7 +3392,7 @@
         // Logout
         async function logout() {
             await sb.auth.signOut();
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
         }
 
         // Auto-save

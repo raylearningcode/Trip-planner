@@ -1771,8 +1771,10 @@
                         
                         // Calculate total budget
                         const budgetItems = personalBudget?.data || [];
+                        console.log(`Member ${m.user_id} budget items:`, budgetItems);
                         const totalIdr = budgetItems.reduce((sum, item) => sum + (item.amount || 0), 0);
                         const totalEur = totalIdr / exchangeRate;
+                        console.log(`Member ${m.user_id} totals: IDR=${totalIdr}, EUR=${totalEur}`);
                         
                         return { user_id: m.user_id, budgetIdr: totalIdr, budgetEur: totalEur };
                     })
@@ -2503,11 +2505,10 @@
                         
                         <div style="margin-top: 16px; background: var(--bg-main); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">
                             <div style="margin-bottom: 12px;">
-                                <label style="display: block; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Budget (IDR)</label>
-                                <input type="text" value="${formatNumberInput(member.budget || 0)}" 
-                                       onchange="updateMemberBudget(${idx}, this.value)"
-                                       placeholder="0"
-                                       style="width: 100%; padding: 12px; font-size: 18px; font-weight: 600; text-align: left; background: var(--bg-hover); border: 2px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                                <label style="display: block; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Total Budget (from Budget Tab)</label>
+                                <div style="font-size: 14px; color: var(--text-tertiary); margin-bottom: 4px;">
+                                    ${formatCurrency(member.budget || 0)}
+                                </div>
                             </div>
                             <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(236, 72, 153, 0.05) 100%); border-radius: 8px;">
                                 <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">EUR Equivalent</span>

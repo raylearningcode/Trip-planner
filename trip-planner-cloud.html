@@ -1740,6 +1740,7 @@
                 tripData.group = memberProfiles.map(m => {
                     const existingMember = existingGroup.find(g => g.email === m.profile?.email);
                     return {
+                        user_id: m.user_id, // Add user_id for removal
                         name: m.profile?.username || m.profile?.email?.split('@')[0] || 'User',
                         email: m.profile?.email || '',
                         confirmed: true,
@@ -2363,8 +2364,27 @@
             showSuccessToast('Invitation cancelled');
         }
 
-        function removeMember(idx) {
+        async function removeMember(idx) {
             const member = tripData.group[idx];
+            
+            // Check if current user is owner
+            const currentUserIsOwner = tripData.group.some(m => m.email === user.email && m.inviteStatus === 'owner');
+            if (!currentUserIsOwner) {
+                showErrorToast('Only the trip owner can remove members');
+                return;
+            }
+            
+            // Can't remove owner
+            if (member.inviteStatus === 'owner') {
+                showErrorToast('Cannot remove the trip owner');
+                return;
+            }
+            
+            if (!member.user_id) {
+                showErrorToast('Cannot remove this member');
+                return;
+            }
+            
             showModal(`
                 <div class="modal-header">
                     <div class="modal-title">⚠️ Remove Member</div>
@@ -2376,18 +2396,32 @@
                 </div>
                 <div class="modal-actions">
                     <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button class="modal-btn modal-btn-primary" onclick="confirmRemoveMember(${idx})" style="background: var(--danger);">Remove Member</button>
+                    <button class="modal-btn modal-btn-primary" onclick="confirmRemoveMember('${member.user_id}')" style="background: var(--danger);">Remove Member</button>
                 </div>
             `);
         }
 
-        function confirmRemoveMember(idx) {
-            tripData.group.splice(idx, 1);
-            renderGroupMembers();
-            updateGroupStats();
-            saveData();
+        async function confirmRemoveMember(userId) {
+            // Delete from trip_members table
+            const { error } = await sb
+                .from('trip_members')
+                .delete()
+                .eq('trip_id', currentTrip)
+                .eq('user_id', userId);
+            
+            if (error) {
+                console.error('Remove error:', error);
+                showErrorToast('Error: ' + error.message);
+                closeModal();
+                return;
+            }
+            
             closeModal();
             showSuccessToast('Member removed');
+            
+            // Reload data to refresh group
+            await loadData();
+            renderAll();
         }
 
         function toggleMemberConfirm(idx) {
@@ -2417,13 +2451,18 @@
                 const initials = member.name ? member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
                 const statusClass = member.confirmed ? 'confirmed' : 'pending';
                 const statusText = member.confirmed ? '✓ Confirmed' : '⏳ Pending';
+                const isOwner = member.inviteStatus === 'owner';
+                const currentUserIsOwner = tripData.group.some(m => m.email === user.email && m.inviteStatus === 'owner');
                 
                 return `
                     <div class="member-card">
                         <div class="member-card-header">
                             <div>
                                 <div class="member-avatar">${initials}</div>
-                                <div class="member-name">${member.name || 'Unnamed'}</div>
+                                <div class="member-name">
+                                    ${member.name || 'Unnamed'}
+                                    ${isOwner ? '<span style="margin-left: 8px; padding: 2px 8px; background: var(--primary); color: white; border-radius: 4px; font-size: 10px; font-weight: 700;">OWNER</span>' : ''}
+                                </div>
                                 ${member.email ? `<div class="member-email">${member.email}</div>` : ''}
                             </div>
                             <span class="member-status ${statusClass}">${statusText}</span>
@@ -2453,9 +2492,11 @@
                             <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="toggleMemberConfirm(${idx})">
                                 ${member.confirmed ? '✗ Unconfirm' : '✓ Confirm'}
                             </button>
-                            <button class="btn btn-danger btn-sm" onclick="removeMember(${idx})">
-                                🗑️
-                            </button>
+                            ${!isOwner && currentUserIsOwner ? `
+                                <button class="btn btn-danger btn-sm" onclick="removeMember(${idx})">
+                                    🗑️
+                                </button>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -3303,6 +3344,13 @@
                         return;
                     }
                     currentTrip = newTrip.id;
+                    
+                    // Add as trip member with owner role
+                    await sb.from('trip_members').insert([{
+                        trip_id: newTrip.id,
+                        user_id: user.id,
+                        role: 'owner'
+                    }]);
                 } else {
                     currentTrip = trips[0].id;
                 }

@@ -1711,8 +1711,8 @@
                 for (const row of sharedData) {
                     if (row.data_type === 'group') tripData.group = row.data;
                     if (row.data_type === 'destinations') tripData.destinations = row.data;
-                    if (row.data_type === 'dayPlans') tripData.dayPlans = row.data;
-                    if (row.data_type === 'sharedExpenses') tripData.sharedExpenses = row.data;
+                    if (row.data_type === 'itinerary') tripData.dayPlans = row.data;
+                    if (row.data_type === 'shared_expenses') tripData.sharedExpenses = row.data;
                 }
             }
             
@@ -1837,14 +1837,14 @@
             
             await sb.from('shared_trip_data').upsert({
                 trip_id: currentTrip,
-                data_type: 'dayPlans',
+                data_type: 'itinerary',
                 data: tripData.dayPlans || [],
                 last_edited_by: user.id
             }, { onConflict: 'trip_id,data_type' });
             
             await sb.from('shared_trip_data').upsert({
                 trip_id: currentTrip,
-                data_type: 'sharedExpenses',
+                data_type: 'shared_expenses',
                 data: tripData.sharedExpenses || [],
                 last_edited_by: user.id
             }, { onConflict: 'trip_id,data_type' });

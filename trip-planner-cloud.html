@@ -1105,15 +1105,15 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label">Destination</label>
-                        <input type="text" class="form-input" id="destination" value="Germany (Multi-City)">
+                        <input type="text" class="form-input" id="destination" value="Germany (Multi-City)" onchange="saveData(); renderAll();">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Departure Date</label>
-                        <input type="date" class="form-input" id="departureDate" value="2027-06-01">
+                        <input type="date" class="form-input" id="departureDate" value="2027-06-01" onchange="saveData(); renderAll(); updateAllStats();">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Return Date</label>
-                        <input type="date" class="form-input" id="returnDate" value="2027-06-14">
+                        <input type="date" class="form-input" id="returnDate" value="2027-06-14" onchange="saveData(); renderAll(); updateAllStats();">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Travelers</label>
@@ -1912,7 +1912,7 @@
         function addBudgetItem() {
             tripData.budget.push({ category: '', item: '', amount: 0, amountEur: 0, priority: 'MUST', notes: '' });
             renderBudgetTable();
-            saveData();
+            saveData().then(() => reloadMemberBudgets());
         }
 
         function deleteBudgetItem(idx, btn) {
@@ -1929,7 +1929,7 @@
                 tripData.budget.splice(idx, 1);
                 renderBudgetTable();
                 updateAllStats();
-                saveData();
+                saveData().then(() => reloadMemberBudgets());
             }
         }
 
@@ -1964,9 +1964,78 @@
             const eur = parseFloat(eurValue) || 0;
             tripData.budget[idx].amountEur = eur;
             tripData.budget[idx].amount = Math.round(eur * exchangeRate);
-            saveData();
+            saveData().then(() => {
+                // Reload member budgets to update group display
+                reloadMemberBudgets();
+            });
             renderBudgetTable();
             updateAllStats();
+        }
+        
+        async function reloadMemberBudgets() {
+            // Reload all members and their budgets
+            const { data: members } = await sb
+                .from('trip_members')
+                .select('user_id, role, joined_at')
+                .eq('trip_id', currentTrip)
+                .order('joined_at', { ascending: true });
+            
+            if (!members) return;
+            
+            const memberProfiles = await Promise.all(
+                members.map(async (m) => {
+                    const { data: profile } = await sb
+                        .from('profiles')
+                        .select('username, email')
+                        .eq('id', m.user_id)
+                        .maybeSingle();
+                    return { ...m, profile };
+                })
+            );
+            
+            // Get each member's personal budget
+            const memberBudgets = await Promise.all(
+                memberProfiles.map(async (m) => {
+                    const { data: personalBudget } = await sb
+                        .from('trip_data')
+                        .select('data')
+                        .eq('trip_id', currentTrip)
+                        .eq('user_id', m.user_id)
+                        .eq('data_type', 'budget')
+                        .maybeSingle();
+                    
+                    // Calculate total budget
+                    const budgetItems = personalBudget?.data || [];
+                    console.log(`Reload - Member ${m.user_id} budget items:`, budgetItems);
+                    const totalIdr = budgetItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+                    const totalEur = totalIdr / exchangeRate;
+                    console.log(`Reload - Member ${m.user_id} totals: IDR=${totalIdr}, EUR=${totalEur}`);
+                    
+                    return { user_id: m.user_id, budgetIdr: totalIdr, budgetEur: totalEur };
+                })
+            );
+            
+            // Save existing group to preserve contact/confirmed status
+            const oldGroup = tripData.group || [];
+            
+            // Update tripData.group with new budgets
+            tripData.group = memberProfiles.map(m => {
+                const memberBudget = memberBudgets.find(b => b.user_id === m.user_id);
+                const existingMember = oldGroup.find(g => g.user_id === m.user_id);
+                return {
+                    user_id: m.user_id,
+                    name: m.profile?.username || m.profile?.email?.split('@')[0] || 'User',
+                    email: m.profile?.email || '',
+                    budget: memberBudget?.budgetIdr || 0,
+                    budgetEur: memberBudget?.budgetEur || 0,
+                    contact: existingMember?.contact || '',
+                    confirmed: existingMember?.confirmed || false,
+                    inviteStatus: m.role === 'owner' ? 'owner' : 'member'
+                };
+            });
+            
+            renderGroupMembers();
+            updateGroupStats();
         }
 
         function sortBudgetByPriority() {

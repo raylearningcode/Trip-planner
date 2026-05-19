@@ -3221,16 +3221,17 @@
 
         // Notification System
         async function loadNotifications() {
-            const { data: invites } = await sb
+            const { data: invites, error } = await sb
                 .from('trip_invitations')
-                .select(`
-                    *,
-                    trips(name, destination),
-                    inviter:profiles!trip_invitations_inviter_id_fkey(username)
-                `)
+                .select('*')
                 .eq('invitee_email', user.email)
                 .eq('status', 'pending')
                 .order('invited_at', { ascending: false });
+            
+            if (error) {
+                console.error('Load notifications error:', error);
+                return;
+            }
             
             if (!invites || invites.length === 0) {
                 document.getElementById('notificationBadge').style.display = 'none';
@@ -3242,18 +3243,29 @@
             document.getElementById('notificationBadge').textContent = invites.length;
             document.getElementById('notificationBadge').style.display = 'block';
             
+            // Get trip and inviter details for each invite
+            const invitesWithDetails = await Promise.all(invites.map(async (inv) => {
+                const { data: trip } = await sb.from('trips').select('name, destination').eq('id', inv.trip_id).single();
+                const { data: inviter } = await sb.from('profiles').select('username').eq('id', inv.inviter_id).single();
+                return { ...inv, trip, inviter };
+            }));
+            
             // Render invitations
-            document.getElementById('notificationList').innerHTML = invites.map(inv => {
+            document.getElementById('notificationList').innerHTML = invitesWithDetails.map(inv => {
                 const timeAgo = getTimeAgo(new Date(inv.invited_at));
+                const tripName = inv.trip?.name || 'Trip';
+                const destination = inv.trip?.destination || 'an amazing destination';
+                const inviterName = inv.inviter?.username || 'Someone';
+                
                 return `
                     <div class="notification-item">
-                        <div class="notification-trip">${inv.trips.name || 'Trip'}</div>
+                        <div class="notification-trip">${tripName}</div>
                         <div class="notification-message">
-                            ${inv.inviter.username || 'Someone'} invited you to join their trip to ${inv.trips.destination || 'an amazing destination'}
+                            ${inviterName} invited you to join their trip to ${destination}
                         </div>
                         <div class="notification-time">${timeAgo}</div>
                         <div class="notification-actions">
-                            <button class="notification-btn notification-btn-accept" onclick="acceptInvite('${inv.id}')">Accept</button>
+                            <button class="notification-btn notification-btn-accept" onclick="acceptInvite('${inv.id}', '${inv.trip_id}')">Accept</button>
                             <button class="notification-btn notification-btn-decline" onclick="declineInvite('${inv.id}')">Decline</button>
                         </div>
                     </div>
@@ -3269,15 +3281,8 @@
             }
         }
 
-        async function acceptInvite(inviteId) {
+        async function acceptInvite(inviteId, tripId) {
             try {
-                // Get invite details
-                const { data: invite } = await sb
-                    .from('trip_invitations')
-                    .select('trip_id')
-                    .eq('id', inviteId)
-                    .single();
-                
                 // Update invitation status
                 await sb
                     .from('trip_invitations')
@@ -3292,18 +3297,20 @@
                 await sb
                     .from('trip_members')
                     .insert([{
-                        trip_id: invite.trip_id,
+                        trip_id: tripId,
                         user_id: user.id
                     }]);
                 
                 showSuccessToast('Invitation accepted!');
                 loadNotifications();
                 
-                // Optionally switch to that trip
+                // Switch to that trip
                 if (confirm('Switch to this trip now?')) {
-                    window.location.reload();
+                    currentTrip = tripId;
+                    await loadTrip();
                 }
             } catch (e) {
+                console.error('Accept error:', e);
                 showErrorToast('Error: ' + e.message);
             }
         }

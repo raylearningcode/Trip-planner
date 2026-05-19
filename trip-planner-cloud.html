@@ -2193,6 +2193,36 @@
             
             showSuccessToast('Invitation sent to ' + email);
             document.getElementById('inviteEmail').value = '';
+            renderPendingInvitations();
+            updateGroupStats();
+        }
+
+        async function cancelInviteDB(inviteId) {
+            showModal(`
+                <div class="modal-header">
+                    <div class="modal-title">⚠️ Cancel Invitation</div>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <p style="color: var(--text-secondary);">Are you sure you want to cancel this invitation?</p>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Keep Invitation</button>
+                    <button class="modal-btn modal-btn-primary" onclick="confirmCancelInviteDB('${inviteId}')" style="background: var(--danger);">Cancel Invite</button>
+                </div>
+            `);
+        }
+
+        async function confirmCancelInviteDB(inviteId) {
+            await sb
+                .from('trip_invitations')
+                .delete()
+                .eq('id', inviteId);
+            
+            closeModal();
+            showSuccessToast('Invitation cancelled');
+            renderPendingInvitations();
+            updateGroupStats();
         }
 
         function copyShareLink() {
@@ -2328,27 +2358,37 @@
             }).join('');
         }
 
-        function renderPendingInvitations() {
+        async function renderPendingInvitations() {
             const container = document.getElementById('pendingInvitationsList');
-            if (!tripData.pendingInvites || tripData.pendingInvites.length === 0) {
+            
+            // Query database for invitations sent by current user
+            const { data: invites } = await sb
+                .from('trip_invitations')
+                .select('*')
+                .eq('trip_id', currentTrip)
+                .eq('inviter_id', user.id)
+                .eq('status', 'pending')
+                .order('invited_at', { ascending: false });
+            
+            if (!invites || invites.length === 0) {
                 container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No pending invitations</p>';
                 return;
             }
 
-            container.innerHTML = tripData.pendingInvites.map(invite => {
-                const initials = invite.email.slice(0, 2).toUpperCase();
-                const timeAgo = getTimeAgo(new Date(invite.invitedAt));
+            container.innerHTML = invites.map(invite => {
+                const initials = invite.invitee_email.slice(0, 2).toUpperCase();
+                const timeAgo = getTimeAgo(new Date(invite.invited_at));
                 
                 return `
                     <div class="pending-invite-card">
                         <div class="pending-invite-info">
                             <div class="pending-invite-avatar">${initials}</div>
                             <div>
-                                <div style="font-weight: 500; margin-bottom: 2px;">${invite.email}</div>
+                                <div style="font-weight: 500; margin-bottom: 2px;">${invite.invitee_email}</div>
                                 <div style="font-size: 12px; color: var(--text-secondary);">Invited ${timeAgo}</div>
                             </div>
                         </div>
-                        <button class="btn btn-danger btn-sm" onclick="cancelInvite('${invite.email}')">
+                        <button class="btn btn-danger btn-sm" onclick="cancelInviteDB('${invite.id}')">
                             Cancel
                         </button>
                     </div>
@@ -2356,10 +2396,19 @@
             }).join('');
         }
 
-        function updateGroupStats() {
+        async function updateGroupStats() {
             const totalMembers = (tripData.group || []).length;
             const confirmed = (tripData.group || []).filter(m => m.confirmed).length;
-            const pending = (tripData.pendingInvites || []).length;
+            
+            // Count pending invites from database
+            const { data: pendingInvites } = await sb
+                .from('trip_invitations')
+                .select('id')
+                .eq('trip_id', currentTrip)
+                .eq('inviter_id', user.id)
+                .eq('status', 'pending');
+            
+            const pending = pendingInvites ? pendingInvites.length : 0;
             const totalBudget = (tripData.group || []).reduce((sum, m) => sum + (m.budgetEur || 0), 0);
             
             document.getElementById('totalMembers').textContent = totalMembers;
@@ -3093,7 +3142,7 @@
             // Check authentication
             const { data: { session } } = await sb.auth.getSession();
             if (!session) {
-                window.location.href = 'login.html';
+                window.location.href = 'index.html';
                 return;
             }
             user = session.user;
@@ -3340,7 +3389,7 @@
         // Logout
         async function logout() {
             await sb.auth.signOut();
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
         }
 
         // Auto-save

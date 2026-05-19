@@ -1710,24 +1710,32 @@
             // Load trip members from database and merge with tripData.group
             const { data: dbMembers } = await sb
                 .from('trip_members')
-                .select(`
-                    user_id,
-                    role,
-                    profiles(username, email)
-                `)
+                .select('user_id, role')
                 .eq('trip_id', currentTrip);
             
             if (dbMembers && dbMembers.length > 0) {
+                // Get profiles separately
+                const memberProfiles = await Promise.all(
+                    dbMembers.map(async (m) => {
+                        const { data: profile } = await sb
+                            .from('profiles')
+                            .select('username, email')
+                            .eq('id', m.user_id)
+                            .maybeSingle();
+                        return { ...m, profile };
+                    })
+                );
+                
                 // Build group array from database members
-                tripData.group = dbMembers.map(m => {
-                    const existingMember = tripData.group?.find(g => g.email === m.profiles?.email);
+                tripData.group = memberProfiles.map(m => {
+                    const existingMember = tripData.group?.find(g => g.email === m.profile?.email);
                     return {
-                        name: m.profiles?.username || m.profiles?.email?.split('@')[0] || 'User',
-                        email: m.profiles?.email || '',
+                        name: m.profile?.username || m.profile?.email?.split('@')[0] || 'User',
+                        email: m.profile?.email || '',
                         confirmed: true,
                         budget: existingMember?.budget || 0,
                         budgetEur: existingMember?.budgetEur || 0,
-                        contact: m.profiles?.email || '',
+                        contact: m.profile?.email || '',
                         inviteStatus: m.role === 'owner' ? 'owner' : 'member'
                     };
                 });
@@ -2218,7 +2226,7 @@
                 .eq('trip_id', currentTrip)
                 .eq('invitee_email', email)
                 .eq('status', 'pending')
-                .single();
+                .maybeSingle();
             
             if (existing) {
                 showErrorToast('Already invited!');
@@ -3208,7 +3216,7 @@
                 .from('profiles')
                 .select('username')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
             
             if (profile) {
                 user.username = profile.username;
@@ -3312,7 +3320,7 @@
                     .select('username')
                     .eq('username', newUsername)
                     .neq('id', user.id)
-                    .single();
+                    .maybeSingle();
                 
                 if (existing) {
                     alert('Username already taken. Choose another.');
@@ -3373,10 +3381,10 @@
             document.getElementById('notificationBadge').textContent = invites.length;
             document.getElementById('notificationBadge').style.display = 'block';
             
-            // Get trip and inviter details for each invite
+            // Get trip and inviter details for each invite separately
             const invitesWithDetails = await Promise.all(invites.map(async (inv) => {
-                const { data: trip } = await sb.from('trips').select('name, destination').eq('id', inv.trip_id).single();
-                const { data: inviter } = await sb.from('profiles').select('username').eq('id', inv.inviter_id).single();
+                const { data: trip } = await sb.from('trips').select('name, destination').eq('id', inv.trip_id).maybeSingle();
+                const { data: inviter } = await sb.from('profiles').select('username').eq('id', inv.inviter_id).maybeSingle();
                 return { ...inv, trip, inviter };
             }));
             

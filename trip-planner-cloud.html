@@ -1684,30 +1684,39 @@
 
         // Load/Save Data
         async function loadData() {
-            // Load trip_data by data_type
-            const { data: allData } = await sb
+            // Load PERSONAL data from trip_data
+            const { data: personalData } = await sb
                 .from('trip_data')
                 .select('*')
                 .eq('trip_id', currentTrip)
                 .eq('user_id', user.id);
             
-            if (allData && allData.length > 0) {
-                for (const row of allData) {
+            if (personalData && personalData.length > 0) {
+                for (const row of personalData) {
                     if (row.data_type === 'personal_notes') {
-                        // Unpack personal_notes into separate fields
                         if (row.data.overview) tripData.overview = row.data.overview;
-                        if (row.data.group) tripData.group = row.data.group;
-                        if (row.data.destinations) tripData.destinations = row.data.destinations;
-                        if (row.data.dayPlans) tripData.dayPlans = row.data.dayPlans;
-                        if (row.data.sharedExpenses) tripData.sharedExpenses = row.data.sharedExpenses;
                     } else {
-                        // Direct mapping for other types
                         tripData[row.data_type] = row.data;
                     }
                 }
             }
             
-            // Load trip members from database and merge with tripData.group
+            // Load SHARED data from shared_trip_data (all members see same)
+            const { data: sharedData } = await sb
+                .from('shared_trip_data')
+                .select('*')
+                .eq('trip_id', currentTrip);
+            
+            if (sharedData && sharedData.length > 0) {
+                for (const row of sharedData) {
+                    if (row.data_type === 'group') tripData.group = row.data;
+                    if (row.data_type === 'destinations') tripData.destinations = row.data;
+                    if (row.data_type === 'dayPlans') tripData.dayPlans = row.data;
+                    if (row.data_type === 'sharedExpenses') tripData.sharedExpenses = row.data;
+                }
+            }
+            
+            // Load trip members from database and sync with tripData.group
             const { data: dbMembers } = await sb
                 .from('trip_members')
                 .select('user_id, role')
@@ -1726,9 +1735,10 @@
                     })
                 );
                 
-                // Build group array from database members
+                // Sync database members into tripData.group
+                const existingGroup = tripData.group || [];
                 tripData.group = memberProfiles.map(m => {
-                    const existingMember = tripData.group?.find(g => g.email === m.profile?.email);
+                    const existingMember = existingGroup.find(g => g.email === m.profile?.email);
                     return {
                         name: m.profile?.username || m.profile?.email?.split('@')[0] || 'User',
                         email: m.profile?.email || '',
@@ -1739,6 +1749,14 @@
                         inviteStatus: m.role === 'owner' ? 'owner' : 'member'
                     };
                 });
+                
+                // Save synced group back to shared data
+                await sb.from('shared_trip_data').upsert({
+                    trip_id: currentTrip,
+                    data_type: 'group',
+                    data: tripData.group,
+                    last_edited_by: user.id
+                }, { onConflict: 'trip_id,data_type' });
             }
             
             // Set defaults if empty
@@ -1782,10 +1800,9 @@
                 returnDate: document.getElementById('returnDate').value
             };
             
-            // Save to Supabase - insert each data type separately
-            const dataTypes = ['budget', 'savings', 'logistics', 'packing', 'bookings'];
-            
-            for (const type of dataTypes) {
+            // Save PERSONAL data to trip_data (per user)
+            const personalTypes = ['budget', 'savings', 'logistics', 'packing', 'bookings'];
+            for (const type of personalTypes) {
                 await sb.from('trip_data').upsert({
                     trip_id: currentTrip,
                     user_id: user.id,
@@ -1794,19 +1811,42 @@
                 }, { onConflict: 'trip_id,user_id,data_type' });
             }
             
-            // Save overview, group, destinations, dayPlans as personal_notes
+            // Save overview to personal notes
             await sb.from('trip_data').upsert({
                 trip_id: currentTrip,
                 user_id: user.id,
                 data_type: 'personal_notes',
-                data: {
-                    overview: tripData.overview,
-                    group: tripData.group,
-                    destinations: tripData.destinations,
-                    dayPlans: tripData.dayPlans,
-                    sharedExpenses: tripData.sharedExpenses
-                }
+                data: { overview: tripData.overview }
             }, { onConflict: 'trip_id,user_id,data_type' });
+            
+            // Save SHARED data to shared_trip_data (all members see same)
+            await sb.from('shared_trip_data').upsert({
+                trip_id: currentTrip,
+                data_type: 'group',
+                data: tripData.group || [],
+                last_edited_by: user.id
+            }, { onConflict: 'trip_id,data_type' });
+            
+            await sb.from('shared_trip_data').upsert({
+                trip_id: currentTrip,
+                data_type: 'destinations',
+                data: tripData.destinations || { main: [], optional: [], other: [], restaurants: [] },
+                last_edited_by: user.id
+            }, { onConflict: 'trip_id,data_type' });
+            
+            await sb.from('shared_trip_data').upsert({
+                trip_id: currentTrip,
+                data_type: 'dayPlans',
+                data: tripData.dayPlans || [],
+                last_edited_by: user.id
+            }, { onConflict: 'trip_id,data_type' });
+            
+            await sb.from('shared_trip_data').upsert({
+                trip_id: currentTrip,
+                data_type: 'sharedExpenses',
+                data: tripData.sharedExpenses || [],
+                last_edited_by: user.id
+            }, { onConflict: 'trip_id,data_type' });
             
             // Also update trips table
             await sb.from('trips').update({

@@ -1689,13 +1689,20 @@
                 .from('trips')
                 .select('destination, departure_date, return_date')
                 .eq('id', currentTrip)
-                .single();
+                .maybeSingle();
             
             if (trip) {
                 tripData.overview = {
                     destination: trip.destination || '',
                     departureDate: trip.departure_date || '',
                     returnDate: trip.return_date || ''
+                };
+            } else {
+                // Initialize with empty values if no trip found
+                tripData.overview = {
+                    destination: '',
+                    departureDate: '',
+                    returnDate: ''
                 };
             }
             
@@ -1750,15 +1757,36 @@
                 
                 // Sync database members into tripData.group
                 const existingGroup = tripData.group || [];
+                
+                // Get each member's personal budget
+                const memberBudgets = await Promise.all(
+                    memberProfiles.map(async (m) => {
+                        const { data: personalBudget } = await sb
+                            .from('trip_data')
+                            .select('data')
+                            .eq('trip_id', currentTrip)
+                            .eq('user_id', m.user_id)
+                            .eq('data_type', 'budget')
+                            .maybeSingle();
+                        
+                        // Calculate total budget
+                        const budgetItems = personalBudget?.data || [];
+                        const totalIdr = budgetItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+                        const totalEur = totalIdr / exchangeRate;
+                        
+                        return { user_id: m.user_id, budgetIdr: totalIdr, budgetEur: totalEur };
+                    })
+                );
+                
                 tripData.group = memberProfiles.map(m => {
-                    const existingMember = existingGroup.find(g => g.email === m.profile?.email);
+                    const memberBudget = memberBudgets.find(b => b.user_id === m.user_id);
                     return {
                         user_id: m.user_id, // Add user_id for removal
                         name: m.profile?.username || m.profile?.email?.split('@')[0] || 'User',
                         email: m.profile?.email || '',
                         confirmed: true,
-                        budget: existingMember?.budget || 0,
-                        budgetEur: existingMember?.budgetEur || 0,
+                        budget: memberBudget?.budgetIdr || 0,
+                        budgetEur: memberBudget?.budgetEur || 0,
                         contact: m.profile?.email || '',
                         inviteStatus: m.role === 'owner' ? 'owner' : 'member'
                     };
@@ -3260,10 +3288,12 @@
         }
 
         function renderAll() {
-            // Update trip details inputs
-            document.getElementById('destination').value = tripData.overview.destination || '';
-            document.getElementById('departureDate').value = tripData.overview.departureDate || '';
-            document.getElementById('returnDate').value = tripData.overview.returnDate || '';
+            // Update trip details inputs (with safety checks)
+            if (tripData.overview) {
+                document.getElementById('destination').value = tripData.overview.destination || '';
+                document.getElementById('departureDate').value = tripData.overview.departureDate || '';
+                document.getElementById('returnDate').value = tripData.overview.returnDate || '';
+            }
             
             renderBudgetTable();
             renderSavingsTable();

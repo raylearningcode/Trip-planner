@@ -1684,16 +1684,27 @@
 
         // Load/Save Data
         async function loadData() {
-            // Load trip data from Supabase
-            const { data: userData } = await sb
+            // Load trip_data by data_type
+            const { data: allData } = await sb
                 .from('trip_data')
-                .select('data')
+                .select('*')
                 .eq('trip_id', currentTrip)
-                .eq('user_id', user.id)
-                .maybeSingle();
-
-            if (userData && userData.data) {
-                tripData = userData.data;
+                .eq('user_id', user.id);
+            
+            if (allData && allData.length > 0) {
+                for (const row of allData) {
+                    if (row.data_type === 'personal_notes') {
+                        // Unpack personal_notes into separate fields
+                        if (row.data.overview) tripData.overview = row.data.overview;
+                        if (row.data.group) tripData.group = row.data.group;
+                        if (row.data.destinations) tripData.destinations = row.data.destinations;
+                        if (row.data.dayPlans) tripData.dayPlans = row.data.dayPlans;
+                        if (row.data.sharedExpenses) tripData.sharedExpenses = row.data.sharedExpenses;
+                    } else {
+                        // Direct mapping for other types
+                        tripData[row.data_type] = row.data;
+                    }
+                }
             }
             
             // Set defaults if empty
@@ -1737,12 +1748,31 @@
                 returnDate: document.getElementById('returnDate').value
             };
             
-            // Save to Supabase
+            // Save to Supabase - insert each data type separately
+            const dataTypes = ['budget', 'savings', 'logistics', 'packing', 'bookings'];
+            
+            for (const type of dataTypes) {
+                await sb.from('trip_data').upsert({
+                    trip_id: currentTrip,
+                    user_id: user.id,
+                    data_type: type,
+                    data: tripData[type] || []
+                }, { onConflict: 'trip_id,user_id,data_type' });
+            }
+            
+            // Save overview, group, destinations, dayPlans as personal_notes
             await sb.from('trip_data').upsert({
                 trip_id: currentTrip,
                 user_id: user.id,
-                data: tripData
-            }, { onConflict: 'trip_id,user_id' });
+                data_type: 'personal_notes',
+                data: {
+                    overview: tripData.overview,
+                    group: tripData.group,
+                    destinations: tripData.destinations,
+                    dayPlans: tripData.dayPlans,
+                    sharedExpenses: tripData.sharedExpenses
+                }
+            }, { onConflict: 'trip_id,user_id,data_type' });
             
             // Also update trips table
             await sb.from('trips').update({
@@ -2207,10 +2237,17 @@
         }
 
         async function confirmCancelInviteDB(inviteId) {
-            await sb
+            const { error } = await sb
                 .from('trip_invitations')
                 .delete()
                 .eq('id', inviteId);
+            
+            if (error) {
+                console.error('Cancel error:', error);
+                showErrorToast('Error: ' + error.message);
+                closeModal();
+                return;
+            }
             
             closeModal();
             showSuccessToast('Invitation cancelled');
@@ -3161,24 +3198,25 @@
             document.querySelector('.trip-dates').parentNode.appendChild(userInfo);
             
             // Get or create trip
-            let { data: trips } = await sb
-                .from('trips')
-                .select('*')
-                .eq('owner_id', user.id)
+            // First check if user is member of any trip (accepted invitation)
+            const { data: memberships } = await sb
+                .from('trip_members')
+                .select('trip_id')
+                .eq('user_id', user.id)
                 .limit(1);
-
-            if (!trips || trips.length === 0) {
-                // Check if user is member of any trip
-                const { data: memberships } = await sb
-                    .from('trip_members')
-                    .select('trip_id')
-                    .eq('user_id', user.id)
+            
+            if (memberships && memberships.length > 0) {
+                // Use trip they're a member of
+                currentTrip = memberships[0].trip_id;
+            } else {
+                // Check if they own any trips
+                let { data: trips } = await sb
+                    .from('trips')
+                    .select('*')
+                    .eq('owner_id', user.id)
                     .limit(1);
-                
-                if (memberships && memberships.length > 0) {
-                    // Use trip they're a member of
-                    currentTrip = memberships[0].trip_id;
-                } else {
+
+                if (!trips || trips.length === 0) {
                     // Create new trip
                     const { data: newTrip, error } = await sb.from('trips').insert([{
                         owner_id: user.id,
@@ -3191,10 +3229,12 @@
                         return;
                     }
                     currentTrip = newTrip.id;
+                } else {
+                    currentTrip = trips[0].id;
                 }
-            } else {
-                currentTrip = trips[0].id;
             }
+            
+            console.log('Current trip:', currentTrip);
             
             // Load data
             loadExchangeRate();

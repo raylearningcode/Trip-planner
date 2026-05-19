@@ -3316,44 +3316,34 @@
             // First check if user is member of any trip (accepted invitation)
             const { data: memberships } = await sb
                 .from('trip_members')
-                .select('trip_id')
+                .select('trip_id, joined_at')
                 .eq('user_id', user.id)
+                .order('joined_at', { ascending: false })
                 .limit(1);
             
             if (memberships && memberships.length > 0) {
                 // Use trip they're a member of
                 currentTrip = memberships[0].trip_id;
             } else {
-                // Check if they own any trips
-                let { data: trips } = await sb
-                    .from('trips')
-                    .select('*')
-                    .eq('owner_id', user.id)
-                    .limit(1);
-
-                if (!trips || trips.length === 0) {
-                    // Create new trip
-                    const { data: newTrip, error } = await sb.from('trips').insert([{
-                        owner_id: user.id,
-                        name: 'My Trip'
-                    }]).select().single();
-                    
-                    if (error) {
-                        console.error('Create trip error:', error);
-                        alert('Error creating trip: ' + error.message);
-                        return;
-                    }
-                    currentTrip = newTrip.id;
-                    
-                    // Add as trip member with owner role
-                    await sb.from('trip_members').insert([{
-                        trip_id: newTrip.id,
-                        user_id: user.id,
-                        role: 'owner'
-                    }]);
-                } else {
-                    currentTrip = trips[0].id;
+                // Not a member of any trip - create fresh trip
+                const { data: newTrip, error } = await sb.from('trips').insert([{
+                    owner_id: user.id,
+                    name: 'My Trip'
+                }]).select().single();
+                
+                if (error) {
+                    console.error('Create trip error:', error);
+                    alert('Error creating trip: ' + error.message);
+                    return;
                 }
+                currentTrip = newTrip.id;
+                
+                // Add as trip member with owner role
+                await sb.from('trip_members').insert([{
+                    trip_id: newTrip.id,
+                    user_id: user.id,
+                    role: 'owner'
+                }]);
             }
             
             console.log('Current trip:', currentTrip);

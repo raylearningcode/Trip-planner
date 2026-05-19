@@ -1707,6 +1707,32 @@
                 }
             }
             
+            // Load trip members from database and merge with tripData.group
+            const { data: dbMembers } = await sb
+                .from('trip_members')
+                .select(`
+                    user_id,
+                    role,
+                    profiles(username, email)
+                `)
+                .eq('trip_id', currentTrip);
+            
+            if (dbMembers && dbMembers.length > 0) {
+                // Build group array from database members
+                tripData.group = dbMembers.map(m => {
+                    const existingMember = tripData.group?.find(g => g.email === m.profiles?.email);
+                    return {
+                        name: m.profiles?.username || m.profiles?.email?.split('@')[0] || 'User',
+                        email: m.profiles?.email || '',
+                        confirmed: true,
+                        budget: existingMember?.budget || 0,
+                        budgetEur: existingMember?.budgetEur || 0,
+                        contact: m.profiles?.email || '',
+                        inviteStatus: m.role === 'owner' ? 'owner' : 'member'
+                    };
+                });
+            }
+            
             // Set defaults if empty
             if (!tripData.budget || tripData.budget.length === 0) tripData.budget = defaultBudget;
             if (!tripData.logistics || tripData.logistics.length === 0) tripData.logistics = defaultLogistics;
@@ -3387,6 +3413,20 @@
 
         async function acceptInvite(inviteId, tripId) {
             try {
+                // Check if already a member
+                const { data: existing } = await sb
+                    .from('trip_members')
+                    .select('id')
+                    .eq('trip_id', tripId)
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                
+                if (existing) {
+                    showSuccessToast('Already a member! Reloading...');
+                    setTimeout(() => window.location.reload(), 1000);
+                    return;
+                }
+                
                 // Update invitation status
                 await sb
                     .from('trip_invitations')

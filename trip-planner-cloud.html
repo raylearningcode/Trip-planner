@@ -181,6 +181,14 @@
             padding: 24px;
             margin-bottom: 24px;
             border: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card:hover {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+            border-color: rgba(99, 102, 241, 0.3);
         }
 
         .card-header {
@@ -1381,18 +1389,10 @@
                     <div>
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Friend's Email</label>
                         <div style="display: flex; gap: 12px;">
-                            <input type="email" id="inviteEmail" placeholder="friend@example.com" style="flex: 1;">
+                            <input type="email" id="inviteEmail" placeholder="friend@example.com" 
+                                   style="flex: 1; background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(236, 72, 153, 0.1) 100%); border: 2px solid var(--primary); color: var(--text-primary); font-weight: 500;">
                             <button class="btn btn-primary" onclick="sendInvite()">
                                 <span style="font-size: 16px;">📨</span> Send Invite
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Or Share Trip Link</label>
-                        <div style="display: flex; gap: 12px;">
-                            <input type="text" id="shareLink" readonly value="https://trip-planner.app/join/abc123" style="flex: 1; background: var(--bg-main);">
-                            <button class="btn btn-secondary" onclick="copyShareLink()">
-                                <span style="font-size: 16px;">📋</span> Copy Link
                             </button>
                         </div>
                     </div>
@@ -1574,10 +1574,13 @@
     </div>
 
     <div class="notification-panel" id="notificationPanel">
-        <div class="notification-header">Trip Invitations</div>
+        <div class="notification-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>🔔 Notifications</span>
+            <button onclick="markAllAsRead()" style="background: transparent; border: none; color: var(--primary); cursor: pointer; font-size: 12px; padding: 4px 8px;">Mark all read</button>
+        </div>
         <div class="notification-list" id="notificationList">
             <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
-                No invitations
+                No notifications
             </div>
         </div>
     </div>
@@ -1733,6 +1736,7 @@
                     if (row.data_type === 'destinations') tripData.destinations = row.data;
                     if (row.data_type === 'itinerary') tripData.dayPlans = row.data;
                     if (row.data_type === 'shared_expenses') tripData.sharedExpenses = row.data;
+                    if (row.data_type === 'bookings') tripData.bookings = row.data; // BOOKINGS NOW SHARED
                 }
             }
             
@@ -1845,7 +1849,7 @@
             };
             
             // Save PERSONAL data to trip_data (per user)
-            const personalTypes = ['budget', 'savings', 'logistics', 'packing', 'bookings'];
+            const personalTypes = ['budget', 'savings', 'logistics', 'packing']; // REMOVED 'bookings'
             for (const type of personalTypes) {
                 await sb.from('trip_data').upsert({
                     trip_id: currentTrip,
@@ -1881,6 +1885,14 @@
                 trip_id: currentTrip,
                 data_type: 'shared_expenses',
                 data: tripData.sharedExpenses || [],
+                last_edited_by: user.id
+            }, { onConflict: 'trip_id,data_type' });
+            
+            // BOOKINGS NOW SHARED - Save to shared_trip_data
+            await sb.from('shared_trip_data').upsert({
+                trip_id: currentTrip,
+                data_type: 'bookings',
+                data: tripData.bookings || [],
                 last_edited_by: user.id
             }, { onConflict: 'trip_id,data_type' });
             
@@ -2595,6 +2607,11 @@
                             <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="toggleMemberConfirm(${idx})">
                                 ${member.confirmed ? '✗ Unconfirm' : '✓ Confirm'}
                             </button>
+                            ${!isOwner ? `
+                                <button class="btn btn-primary btn-sm" onclick="sendReminder('${member.user_id}', '${member.name}')" title="Send a reminder notification">
+                                    ⏰
+                                </button>
+                            ` : ''}
                             ${!isOwner && currentUserIsOwner ? `
                                 <button class="btn btn-danger btn-sm" onclick="removeMember(${idx})">
                                     🗑️
@@ -3544,59 +3561,141 @@
 
         // Notification System
         async function loadNotifications() {
-            const { data: invites, error } = await sb
+            // Load invitations
+            const { data: invites } = await sb
                 .from('trip_invitations')
                 .select('*')
                 .eq('invitee_email', user.email)
                 .eq('status', 'pending')
                 .order('invited_at', { ascending: false });
             
-            console.log('Checking invites for:', user.email);
-            console.log('Found invites:', invites);
+            // Load general notifications (reminders, updates, etc.)
+            const { data: notifications } = await sb
+                .from('notifications')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('read', false)
+                .order('created_at', { ascending: false })
+                .limit(20);
             
-            if (error) {
-                console.error('Load notifications error:', error);
-                return;
-            }
+            const totalCount = (invites?.length || 0) + (notifications?.length || 0);
             
-            if (!invites || invites.length === 0) {
+            if (totalCount === 0) {
                 document.getElementById('notificationBadge').style.display = 'none';
-                document.getElementById('notificationList').innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-secondary);">No invitations</div>';
+                document.getElementById('notificationList').innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-secondary);">No notifications</div>';
                 return;
             }
             
             // Show badge
-            document.getElementById('notificationBadge').textContent = invites.length;
+            document.getElementById('notificationBadge').textContent = totalCount;
             document.getElementById('notificationBadge').style.display = 'block';
             
-            // Get trip and inviter details for each invite separately
-            const invitesWithDetails = await Promise.all(invites.map(async (inv) => {
-                const { data: trip } = await sb.from('trips').select('name, destination').eq('id', inv.trip_id).maybeSingle();
-                const { data: inviter } = await sb.from('profiles').select('username').eq('id', inv.inviter_id).maybeSingle();
-                return { ...inv, trip, inviter };
-            }));
+            let html = '';
             
             // Render invitations
-            document.getElementById('notificationList').innerHTML = invitesWithDetails.map(inv => {
-                const timeAgo = getTimeAgo(new Date(inv.invited_at));
-                const tripName = inv.trip?.name || 'Trip';
-                const destination = inv.trip?.destination || 'an amazing destination';
-                const inviterName = inv.inviter?.username || 'Someone';
+            if (invites && invites.length > 0) {
+                const invitesWithDetails = await Promise.all(invites.map(async (inv) => {
+                    const { data: trip } = await sb.from('trips').select('name, destination').eq('id', inv.trip_id).maybeSingle();
+                    const { data: inviter } = await sb.from('profiles').select('username').eq('id', inv.inviter_id).maybeSingle();
+                    return { ...inv, trip, inviter };
+                }));
                 
-                return `
-                    <div class="notification-item">
-                        <div class="notification-trip">${tripName}</div>
-                        <div class="notification-message">
-                            ${inviterName} invited you to join their trip to ${destination}
+                html += invitesWithDetails.map(inv => {
+                    const timeAgo = getTimeAgo(new Date(inv.invited_at));
+                    const tripName = inv.trip?.name || 'Trip';
+                    const destination = inv.trip?.destination || 'an amazing destination';
+                    const inviterName = inv.inviter?.username || 'Someone';
+                    
+                    return `
+                        <div class="notification-item" style="border-left: 3px solid var(--primary);">
+                            <div style="display: flex; gap: 8px; align-items: start;">
+                                <div style="font-size: 20px;">✉️</div>
+                                <div style="flex: 1;">
+                                    <div class="notification-trip">${tripName}</div>
+                                    <div class="notification-message">
+                                        ${inviterName} invited you to join their trip to ${destination}
+                                    </div>
+                                    <div class="notification-time">${timeAgo}</div>
+                                    <div class="notification-actions">
+                                        <button class="notification-btn notification-btn-accept" onclick="acceptInvite('${inv.id}', '${inv.trip_id}')">Accept</button>
+                                        <button class="notification-btn notification-btn-decline" onclick="declineInvite('${inv.id}')">Decline</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="notification-time">${timeAgo}</div>
-                        <div class="notification-actions">
-                            <button class="notification-btn notification-btn-accept" onclick="acceptInvite('${inv.id}', '${inv.trip_id}')">Accept</button>
-                            <button class="notification-btn notification-btn-decline" onclick="declineInvite('${inv.id}')">Decline</button>
+                    `;
+                }).join('');
+            }
+            
+            // Render general notifications
+            if (notifications && notifications.length > 0) {
+                html += notifications.map(notif => {
+                    const timeAgo = getTimeAgo(new Date(notif.created_at));
+                    const icon = {
+                        'reminder': '⏰',
+                        'trip_update': '📝',
+                        'member_joined': '👋',
+                        'budget_alert': '💰',
+                        'booking_added': '🎫'
+                    }[notif.type] || '🔔';
+                    
+                    const borderColor = {
+                        'reminder': 'var(--warning)',
+                        'trip_update': 'var(--primary)',
+                        'member_joined': 'var(--success)',
+                        'budget_alert': 'var(--danger)',
+                        'booking_added': 'var(--secondary)'
+                    }[notif.type] || 'var(--border)';
+                    
+                    return `
+                        <div class="notification-item" style="border-left: 3px solid ${borderColor};">
+                            <div style="display: flex; gap: 8px; align-items: start;">
+                                <div style="font-size: 20px;">${icon}</div>
+                                <div style="flex: 1;">
+                                    <div class="notification-trip">${notif.title}</div>
+                                    <div class="notification-message">${notif.message}</div>
+                                    <div class="notification-time">${timeAgo}</div>
+                                    <button class="notification-btn notification-btn-decline" onclick="markNotificationRead('${notif.id}')" style="margin-top: 8px;">Dismiss</button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+            }
+            
+            document.getElementById('notificationList').innerHTML = html;
+        }
+        
+        async function markNotificationRead(notifId) {
+            await sb.from('notifications').update({ read: true }).eq('id', notifId);
+            loadNotifications();
+        }
+        
+        async function markAllAsRead() {
+            await sb.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false);
+            loadNotifications();
+        }
+        
+        // Helper function to create notifications
+        async function createNotification(tripId, userIds, type, title, message) {
+            const notifications = userIds.map(userId => ({
+                trip_id: tripId,
+                user_id: userId,
+                type: type,
+                title: title,
+                message: message,
+                created_by: user.id
+            }));
+            
+            await sb.from('notifications').insert(notifications);
+        }
+        
+        async function sendReminder(memberId, memberName) {
+            const message = prompt(`Send a reminder to ${memberName}:`, 'Hey! Just checking in about our upcoming trip. Have you had a chance to update your budget and packing list?');
+            if (!message) return;
+            
+            await createNotification(currentTrip, [memberId], 'reminder', 'Trip Reminder', message);
+            showSuccessToast(`Reminder sent to ${memberName}!`);
         }
 
         function toggleNotifications() {
@@ -3646,6 +3745,25 @@
                     console.error('Insert member error:', error);
                     showErrorToast('Error: ' + error.message);
                     return;
+                }
+                
+                // Notify all other members that someone joined
+                const { data: members } = await sb
+                    .from('trip_members')
+                    .select('user_id')
+                    .eq('trip_id', tripId)
+                    .neq('user_id', user.id);
+                
+                if (members && members.length > 0) {
+                    const { data: profile } = await sb.from('profiles').select('username').eq('id', user.id).maybeSingle();
+                    const memberName = profile?.username || 'A new member';
+                    await createNotification(
+                        tripId, 
+                        members.map(m => m.user_id), 
+                        'member_joined', 
+                        'New Member Joined! 👋', 
+                        `${memberName} has joined your trip!`
+                    );
                 }
                 
                 showSuccessToast('Invitation accepted! Reloading...');

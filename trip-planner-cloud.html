@@ -1616,16 +1616,9 @@
             bookings: []
         };
 
-        const defaultBudget = [
-            { category: 'Flights', item: 'Round-trip ticket', amount: 15000000, amountEur: 733, priority: 'MUST', notes: 'Book 6-8 months early' },
-            { category: 'Accommodation', item: 'Hostels (6 nights)', amount: 3600000, amountEur: 176, priority: 'Flexible', notes: '€25/night' },
-            { category: 'Food', item: 'Daily meals', amount: 7000000, amountEur: 342, priority: 'MUST', notes: '€34/day × 14' }
-        ];
+        const defaultBudget = [];
 
-        const defaultLogistics = [
-            { item: 'Schengen Visa', deadline: '2027-03-01', cost: 1500000, status: false, notes: 'Apply 3 months before' },
-            { item: 'Flight Tickets', deadline: '2026-10-01', cost: 15000000, status: false, notes: 'Book early' }
-        ];
+        const defaultLogistics = [];
 
         let exchangeRate = 20453.95;
 
@@ -3369,7 +3362,8 @@
                     .from('trip_members')
                     .insert([{
                         trip_id: tripId,
-                        user_id: user.id
+                        user_id: user.id,
+                        role: 'member'
                     }]);
                 
                 if (error) {

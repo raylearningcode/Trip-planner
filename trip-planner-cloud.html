@@ -1232,46 +1232,49 @@
                 </div>
             </div>
 
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">📊 Trip Summary</div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <!-- Trip Summary (Left) -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">📊 Trip Summary</div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                        <!-- Destinations Summary -->
+                        <div style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                            <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">📍 Destinations</h4>
+                            <div id="destinationsSummary" style="font-size: 14px; line-height: 1.8;"></div>
+                        </div>
+
+                        <!-- Budget Breakdown -->
+                        <div style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                            <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">💰 Budget</h4>
+                            <div id="budgetBreakdown" style="font-size: 14px; line-height: 1.8;"></div>
+                        </div>
+
+                        <!-- Tasks Status -->
+                        <div style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                            <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">✅ Tasks</h4>
+                            <div id="tasksSummary" style="font-size: 14px; line-height: 1.8;"></div>
+                        </div>
+
+                        <!-- Itinerary Summary -->
+                        <div style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                            <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">🗓️ Itinerary</h4>
+                            <div id="itinerarySummary" style="font-size: 14px; line-height: 1.8;"></div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-                    <!-- Destinations Summary -->
-                    <div style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border);">
-                        <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">📍 Destinations</h4>
-                        <div id="destinationsSummary" style="font-size: 14px; line-height: 1.8;"></div>
+                <!-- Group Preparation Checklist (Right) - More Important! -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">✅ Group Prep Checklist</div>
+                        <button class="btn btn-primary btn-sm" onclick="addSharedChecklistItem()" id="addChecklistBtn">+ Add</button>
                     </div>
-
-                    <!-- Budget Breakdown -->
-                    <div style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border);">
-                        <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">💰 Budget</h4>
-                        <div id="budgetBreakdown" style="font-size: 14px; line-height: 1.8;"></div>
-                    </div>
-
-                    <!-- Tasks Status -->
-                    <div style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border);">
-                        <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">✅ Tasks</h4>
-                        <div id="tasksSummary" style="font-size: 14px; line-height: 1.8;"></div>
-                    </div>
-
-                    <!-- Itinerary Summary -->
-                    <div style="padding: 16px; background: var(--bg-hover); border-radius: var(--radius-md); border: 1px solid var(--border);">
-                        <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">🗓️ Itinerary</h4>
-                        <div id="itinerarySummary" style="font-size: 14px; line-height: 1.8;"></div>
-                    </div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin: 12px 0 16px 0;">Owner creates • Members track own progress</p>
+                    <div id="sharedChecklistContainer" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
-            </div>
-            
-            <!-- Shared Checklist Template (Owner creates, everyone tracks own) -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">✅ Group Preparation Checklist</div>
-                    <button class="btn btn-primary btn-sm" onclick="addSharedChecklistItem()" id="addChecklistBtn">+ Add Item</button>
-                </div>
-                <p style="color: var(--text-secondary); font-size: 13px; margin: 12px 0;">Owner creates checklist • Each member tracks their own progress</p>
-                <div id="sharedChecklistContainer"></div>
             </div>
         </div>
 
@@ -3478,34 +3481,25 @@
                 container.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-secondary);"><div style="font-size: 48px;">📝</div><p>No tasks yet!</p></div>';
                 return;
             }
-            const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
+            
             const sorted = [...tripData.todos].sort((a, b) => {
                 if (a.completed !== b.completed) return a.completed ? 1 : -1;
-                return priorityOrder[a.priority] - priorityOrder[b.priority];
+                return 0;
             });
+            
             container.innerHTML = sorted.map(todo => {
                 const idx = tripData.todos.findIndex(t => t.id === todo.id);
-                const overdue = todo.deadline && new Date(todo.deadline) < new Date() && !todo.completed;
-                return `<div style="display: flex; gap: 16px; padding: 20px; background: ${todo.completed ? 'var(--bg-main)' : 'var(--bg-hover)'}; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid ${todo.completed ? 'var(--success)' : todo.priority === 'High' ? 'var(--danger)' : todo.priority === 'Medium' ? '#f59e0b' : 'var(--primary)'};">
-                    <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="tripData.todos[${idx}].completed = this.checked; renderTodos(); saveData();" style="width: 24px; height: 24px; cursor: pointer;">
-                    <div style="flex: 1;">
-                        <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
-                            <input type="text" value="${todo.task}" placeholder="Task..." onchange="tripData.todos[${idx}].task = this.value; saveData();" style="flex: 1; padding: 8px; ${todo.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
-                            <select onchange="tripData.todos[${idx}].priority = this.value; renderTodos(); saveData();" style="padding: 8px;">
-                                <option ${todo.priority === 'High' ? 'selected' : ''}>High</option>
-                                <option ${todo.priority === 'Medium' ? 'selected' : ''}>Medium</option>
-                                <option ${todo.priority === 'Low' ? 'selected' : ''}>Low</option>
-                            </select>
-                            <button class="btn btn-danger btn-sm" onclick="deleteTodo(${idx})">✕</button>
-                        </div>
-                        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                            <div style="flex: 1;"><label style="font-size: 12px; color: var(--text-secondary);">👤 Assigned</label><input value="${todo.assignedTo || ''}" placeholder="Name..." onchange="tripData.todos[${idx}].assignedTo = this.value; saveData();" style="width: 100%; padding: 6px;"></div>
-                            <div style="flex: 1;"><label style="font-size: 12px; color: var(--text-secondary);">📅 Deadline</label><input type="date" value="${todo.deadline || ''}" onchange="tripData.todos[${idx}].deadline = this.value; renderTodos(); saveData();" style="width: 100%; padding: 6px;"></div>
-                        </div>
-                        ${overdue ? '<div style="margin-top: 8px; padding: 6px 12px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; font-size: 13px; color: var(--danger); font-weight: 600;">⚠️ OVERDUE</div>' : ''}
-                        <div style="margin-top: 8px; font-size: 12px; color: var(--text-tertiary);">By ${todo.createdBy} • ${new Date(todo.createdAt).toLocaleDateString()}</div>
+                return `
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: ${todo.completed ? 'var(--bg-main)' : 'var(--bg-hover)'}; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid ${todo.completed ? 'var(--success)' : 'var(--primary)'};">
+                        <input type="checkbox" ${todo.completed ? 'checked' : ''} 
+                            onchange="tripData.todos[${idx}].completed = this.checked; renderTodos(); saveData();" 
+                            style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--success); flex-shrink: 0;">
+                        <input type="text" value="${todo.task}" placeholder="Task..." 
+                            onchange="tripData.todos[${idx}].task = this.value; saveData();" 
+                            style="flex: 1; padding: 8px 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; ${todo.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                        <button class="btn btn-danger btn-sm" onclick="deleteTodo(${idx})" style="flex-shrink: 0;">✕</button>
                     </div>
-                </div>`;
+                `;
             }).join('');
         }
         
@@ -3515,7 +3509,6 @@
         
         // SHARED CHECKLIST (Owner creates template, members track own progress)
         function addSharedChecklistItem() {
-            // Only owner can add items
             const currentUserIsOwner = tripData.group && tripData.group.length > 0 && 
                                       tripData.group[0].user_id === user.id;
             if (!currentUserIsOwner) {
@@ -3526,7 +3519,10 @@
             if (!tripData.sharedChecklist) tripData.sharedChecklist = [];
             tripData.sharedChecklist.push({
                 id: Date.now(),
-                item: '',
+                task: '',
+                assignedTo: '',
+                deadline: '',
+                priority: 'Medium',
                 createdBy: user.email,
                 createdAt: new Date().toISOString()
             });
@@ -3539,54 +3535,133 @@
             if (!container) return;
             
             if (!tripData.sharedChecklist) tripData.sharedChecklist = [];
-            
-            // Get user's completion status
             if (!tripData.myChecklistProgress) tripData.myChecklistProgress = {};
             
             const currentUserIsOwner = tripData.group && tripData.group.length > 0 && 
                                       tripData.group[0].user_id === user.id;
             
-            // Hide add button if not owner
             const addBtn = document.getElementById('addChecklistBtn');
             if (addBtn) addBtn.style.display = currentUserIsOwner ? 'block' : 'none';
             
             if (tripData.sharedChecklist.length === 0) {
-                container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                    <div style="font-size: 48px;">📝</div>
-                    <p>${currentUserIsOwner ? 'No checklist yet. Add items!' : 'Owner hasn\'t added checklist items yet'}</p>
+                container.innerHTML = `<div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                    <div style="font-size: 48px; margin-bottom: 12px;">📝</div>
+                    <p style="font-size: 14px;">${currentUserIsOwner ? 'No checklist yet. Add items!' : 'Owner hasn\'t added items yet'}</p>
                 </div>`;
                 return;
             }
             
-            container.innerHTML = tripData.sharedChecklist.map((item, idx) => {
+            const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
+            const sorted = [...tripData.sharedChecklist].sort((a, b) => {
+                const aChecked = tripData.myChecklistProgress[a.id] || false;
+                const bChecked = tripData.myChecklistProgress[b.id] || false;
+                if (aChecked !== bChecked) return aChecked ? 1 : -1;
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
+            });
+            
+            container.innerHTML = sorted.map(item => {
+                const idx = tripData.sharedChecklist.findIndex(t => t.id === item.id);
                 const isChecked = tripData.myChecklistProgress[item.id] || false;
+                const overdue = item.deadline && new Date(item.deadline) < new Date() && !isChecked;
+                const priorityColor = item.priority === 'High' ? 'var(--danger)' : item.priority === 'Medium' ? '#f59e0b' : 'var(--primary)';
+                
                 return `
-                    <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: ${isChecked ? 'var(--bg-main)' : 'var(--bg-hover)'}; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid ${isChecked ? 'var(--success)' : 'var(--primary)'};">
-                        <label style="display: flex; align-items: center; cursor: pointer; flex: 1;">
+                    <div style="padding: 16px; background: ${isChecked ? 'var(--bg-main)' : 'var(--bg-hover)'}; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid ${isChecked ? 'var(--success)' : priorityColor};">
+                        <div style="display: flex; align-items: start; gap: 12px;">
                             <input type="checkbox" ${isChecked ? 'checked' : ''} 
                                 onchange="tripData.myChecklistProgress[${item.id}] = this.checked; renderSharedChecklist(); saveData();" 
-                                style="width: 20px; height: 20px; margin-right: 16px; cursor: pointer; accent-color: var(--success);">
+                                style="width: 20px; height: 20px; margin-top: 4px; cursor: pointer; accent-color: var(--success); flex-shrink: 0;">
+                            
+                            <div style="flex: 1;">
+                                ${currentUserIsOwner ? 
+                                    `<input type="text" value="${item.task}" placeholder="Task description..." 
+                                        onchange="tripData.sharedChecklist[${idx}].task = this.value; saveData();" 
+                                        style="width: 100%; padding: 8px 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; ${isChecked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">` 
+                                    : 
+                                    `<div style="font-size: 14px; font-weight: 500; ${isChecked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${item.task || 'Unnamed task'}</div>`
+                                }
+                                
+                                ${currentUserIsOwner ? `
+                                    <div style="display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap;">
+                                        <div style="flex: 1; min-width: 150px;">
+                                            <label style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px; display: block;">👤 Assigned To</label>
+                                            <button onclick="selectAssignee(${idx})" style="width: 100%; padding: 8px 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; text-align: left; cursor: pointer; font-size: 13px; color: ${item.assignedTo ? 'var(--text-primary)' : 'var(--text-secondary)'};">
+                                                ${item.assignedTo || 'Select member...'}
+                                            </button>
+                                        </div>
+                                        <div style="flex: 1; min-width: 140px;">
+                                            <label style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px; display: block;">📅 Deadline</label>
+                                            <input type="date" value="${item.deadline || ''}" 
+                                                onchange="tripData.sharedChecklist[${idx}].deadline = this.value; renderSharedChecklist(); saveData();" 
+                                                style="width: 100%; padding: 8px 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; font-size: 13px;">
+                                        </div>
+                                        <div style="flex: 0 0 100px;">
+                                            <label style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px; display: block;">🎯 Priority</label>
+                                            <select onchange="tripData.sharedChecklist[${idx}].priority = this.value; renderSharedChecklist(); saveData();" 
+                                                style="width: 100%; padding: 8px 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; font-size: 13px;">
+                                                <option ${item.priority === 'High' ? 'selected' : ''}>High</option>
+                                                <option ${item.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                                                <option ${item.priority === 'Low' ? 'selected' : ''}>Low</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary); display: flex; gap: 16px; flex-wrap: wrap;">
+                                        ${item.assignedTo ? `<span>👤 ${item.assignedTo}</span>` : ''}
+                                        ${item.deadline ? `<span>📅 ${new Date(item.deadline).toLocaleDateString()}</span>` : ''}
+                                        <span style="color: ${priorityColor};">🎯 ${item.priority}</span>
+                                    </div>
+                                `}
+                                
+                                ${overdue ? '<div style="margin-top: 8px; padding: 6px 12px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; font-size: 12px; color: var(--danger); font-weight: 600;">⚠️ OVERDUE</div>' : ''}
+                            </div>
+                            
                             ${currentUserIsOwner ? 
-                                `<input type="text" value="${item.item}" placeholder="Checklist item..." 
-                                    onchange="tripData.sharedChecklist[${idx}].item = this.value; saveData();" 
-                                    style="flex: 1; padding: 8px; background: transparent; border: 1px solid var(--border); border-radius: 6px; ${isChecked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">` 
-                                : 
-                                `<span style="${isChecked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${item.item || 'Unnamed item'}</span>`
-                            }
-                        </label>
-                        ${currentUserIsOwner ? 
-                            `<button class="btn btn-danger btn-sm" onclick="deleteChecklistItem(${idx})" style="min-width: 40px;">✕</button>` 
-                            : ''}
+                                `<button class="btn btn-danger btn-sm" onclick="deleteChecklistItem(${idx})" style="flex-shrink: 0;">✕</button>` 
+                                : ''}
+                        </div>
                     </div>
                 `;
             }).join('');
+        }
+        
+        function selectAssignee(idx) {
+            if (!tripData.group || tripData.group.length === 0) {
+                showErrorToast('No members to assign');
+                return;
+            }
+            
+            const modalContent = `
+                <div style="max-width: 400px;">
+                    <h2 style="margin-bottom: 20px;">Select Member</h2>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        ${tripData.group.map(member => `
+                            <div onclick="assignToMember(${idx}, '${member.name}')" 
+                                style="padding: 12px 16px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
+                                onmouseover="this.style.background='var(--bg-main)'; this.style.borderLeft='4px solid var(--primary)'"
+                                onmouseout="this.style.background='var(--bg-hover)'; this.style.borderLeft='none'">
+                                <div style="font-weight: 600;">${member.name || 'Unnamed'}</div>
+                                ${member.email ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">${member.email}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button onclick="closeModal()" class="btn btn-secondary" style="width: 100%; margin-top: 16px;">Cancel</button>
+                </div>
+            `;
+            showModal(modalContent);
+        }
+        
+        function assignToMember(idx, name) {
+            tripData.sharedChecklist[idx].assignedTo = name;
+            closeModal();
+            renderSharedChecklist();
+            saveData();
         }
         
         function deleteChecklistItem(idx) {
             if (!confirm('Delete this checklist item? This will remove it for everyone.')) return;
             const itemId = tripData.sharedChecklist[idx].id;
             tripData.sharedChecklist.splice(idx, 1);
-            // Clean up everyone's progress for this item
             if (tripData.myChecklistProgress) delete tripData.myChecklistProgress[itemId];
             renderSharedChecklist();
             saveData();

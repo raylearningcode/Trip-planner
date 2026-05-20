@@ -1263,6 +1263,16 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Shared Checklist Template (Owner creates, everyone tracks own) -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">✅ Group Preparation Checklist</div>
+                    <button class="btn btn-primary btn-sm" onclick="addSharedChecklistItem()" id="addChecklistBtn">+ Add Item</button>
+                </div>
+                <p style="color: var(--text-secondary); font-size: 13px; margin: 12px 0;">Owner creates checklist • Each member tracks their own progress</p>
+                <div id="sharedChecklistContainer"></div>
+            </div>
         </div>
 
         <!-- Budget Page -->
@@ -1464,35 +1474,19 @@
             </div>
         </div>
 
-        <!-- Personal To-Do List -->
-        <div class="page" id="personal-todos">
-            <div class="page-header">
-                <h1 class="page-title">☑️ My Personal To-Do</h1>
-                <p class="page-subtitle">Private tasks only you see</p>
-            </div>
-            
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">📝 My Tasks</div>
-                    <button class="btn btn-primary btn-sm" onclick="addPersonalTodo()">+ Add</button>
-                </div>
-                <div id="personalTodosContainer"></div>
-            </div>
-        </div>
-
-        <!-- Shared To-Do Template -->
+        <!-- To-Do List (Personal) -->
         <div class="page" id="todos">
             <div class="page-header">
-                <h1 class="page-title">✅ Group Checklist</h1>
-                <p class="page-subtitle">Owner creates • Everyone tracks own progress</p>
+                <h1 class="page-title">✅ To-Do List</h1>
+                <p class="page-subtitle">Personal task tracker • Private to you</p>
             </div>
             
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">📋 Preparation Checklist</div>
-                    <button class="btn btn-primary btn-sm" onclick="addSharedTodoTemplate()" id="addSharedTodoBtn">+ Add</button>
+                    <div class="card-title">📋 My Tasks</div>
+                    <button class="btn btn-primary btn-sm" onclick="addTodo()">+ Add Task</button>
                 </div>
-                <div id="sharedTodosContainer"></div>
+                <div id="todosContainer"></div>
             </div>
         </div>
 
@@ -2097,7 +2091,7 @@
                 const personalTypes = ['budget', 'savings', 'logistics', 'packing'];
                 const savePromises = [];
                 
-                // Personal data saves
+                // Personal data saves (including checklist progress)
                 for (const type of personalTypes) {
                     savePromises.push(
                         sb.from('trip_data').upsert({
@@ -2109,6 +2103,17 @@
                         }, { onConflict: 'trip_id,user_id,data_type' })
                     );
                 }
+                
+                // Save personal checklist progress
+                savePromises.push(
+                    sb.from('trip_data').upsert({
+                        trip_id: currentTrip,
+                        user_id: user.id,
+                        data_type: 'checklist_progress',
+                        data: tripData.myChecklistProgress || {},
+                        visibility: 'members'
+                    }, { onConflict: 'trip_id,user_id,data_type' })
+                );
                 
                 // Shared data saves
                 savePromises.push(
@@ -2161,6 +2166,16 @@
                         trip_id: currentTrip,
                         data_type: 'todos',
                         data: tripData.todos || [],
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                // Save shared checklist template
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'shared_checklist',
+                        data: tripData.sharedChecklist || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
                 );
@@ -3497,6 +3512,85 @@
         function deleteTodo(idx) {
             if (confirm('Delete?')) { tripData.todos.splice(idx, 1); renderTodos(); saveData(); }
         }
+        
+        // SHARED CHECKLIST (Owner creates template, members track own progress)
+        function addSharedChecklistItem() {
+            // Only owner can add items
+            const currentUserIsOwner = tripData.group && tripData.group.length > 0 && 
+                                      tripData.group[0].user_id === user.id;
+            if (!currentUserIsOwner) {
+                showErrorToast('Only the trip owner can add checklist items');
+                return;
+            }
+            
+            if (!tripData.sharedChecklist) tripData.sharedChecklist = [];
+            tripData.sharedChecklist.push({
+                id: Date.now(),
+                item: '',
+                createdBy: user.email,
+                createdAt: new Date().toISOString()
+            });
+            renderSharedChecklist();
+            saveData();
+        }
+        
+        function renderSharedChecklist() {
+            const container = document.getElementById('sharedChecklistContainer');
+            if (!container) return;
+            
+            if (!tripData.sharedChecklist) tripData.sharedChecklist = [];
+            
+            // Get user's completion status
+            if (!tripData.myChecklistProgress) tripData.myChecklistProgress = {};
+            
+            const currentUserIsOwner = tripData.group && tripData.group.length > 0 && 
+                                      tripData.group[0].user_id === user.id;
+            
+            // Hide add button if not owner
+            const addBtn = document.getElementById('addChecklistBtn');
+            if (addBtn) addBtn.style.display = currentUserIsOwner ? 'block' : 'none';
+            
+            if (tripData.sharedChecklist.length === 0) {
+                container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <div style="font-size: 48px;">📝</div>
+                    <p>${currentUserIsOwner ? 'No checklist yet. Add items!' : 'Owner hasn\'t added checklist items yet'}</p>
+                </div>`;
+                return;
+            }
+            
+            container.innerHTML = tripData.sharedChecklist.map((item, idx) => {
+                const isChecked = tripData.myChecklistProgress[item.id] || false;
+                return `
+                    <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: ${isChecked ? 'var(--bg-main)' : 'var(--bg-hover)'}; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid ${isChecked ? 'var(--success)' : 'var(--primary)'};">
+                        <label style="display: flex; align-items: center; cursor: pointer; flex: 1;">
+                            <input type="checkbox" ${isChecked ? 'checked' : ''} 
+                                onchange="tripData.myChecklistProgress[${item.id}] = this.checked; renderSharedChecklist(); saveData();" 
+                                style="width: 20px; height: 20px; margin-right: 16px; cursor: pointer; accent-color: var(--success);">
+                            ${currentUserIsOwner ? 
+                                `<input type="text" value="${item.item}" placeholder="Checklist item..." 
+                                    onchange="tripData.sharedChecklist[${idx}].item = this.value; saveData();" 
+                                    style="flex: 1; padding: 8px; background: transparent; border: 1px solid var(--border); border-radius: 6px; ${isChecked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">` 
+                                : 
+                                `<span style="${isChecked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${item.item || 'Unnamed item'}</span>`
+                            }
+                        </label>
+                        ${currentUserIsOwner ? 
+                            `<button class="btn btn-danger btn-sm" onclick="deleteChecklistItem(${idx})" style="min-width: 40px;">✕</button>` 
+                            : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function deleteChecklistItem(idx) {
+            if (!confirm('Delete this checklist item? This will remove it for everyone.')) return;
+            const itemId = tripData.sharedChecklist[idx].id;
+            tripData.sharedChecklist.splice(idx, 1);
+            // Clean up everyone's progress for this item
+            if (tripData.myChecklistProgress) delete tripData.myChecklistProgress[itemId];
+            renderSharedChecklist();
+            saveData();
+        }
 
         function renderGroupMembers() {
             const grid = document.getElementById('membersGrid');
@@ -4345,6 +4439,7 @@
             updateGroupStats();
             renderPackingList();
             renderTodos();
+            renderSharedChecklist();
             renderBookings();
             renderSharedExpenses();
             renderDestinations();

@@ -888,6 +888,65 @@
             color: var(--text-secondary);
             border: 1px solid var(--border);
         }
+        
+        /* Quick Actions FAB */
+        .quick-actions-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+            z-index: 999;
+            transition: all 0.3s ease;
+        }
+        
+        .quick-actions-fab:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 12px 32px rgba(99, 102, 241, 0.6);
+        }
+        
+        .quick-actions-menu {
+            position: fixed;
+            bottom: 100px;
+            right: 24px;
+            width: 280px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+            z-index: 998;
+            display: none;
+            animation: slideUp 0.3s ease;
+        }
+        
+        .quick-actions-menu.active {
+            display: block;
+        }
+        
+        .quick-action {
+            padding: 14px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .quick-action:last-child {
+            border-bottom: none;
+        }
+        
+        .quick-action:hover {
+            background: var(--bg-hover);
+            padding-left: 28px;
+        }
 
         /* Mobile */
         .mobile-menu-toggle {
@@ -941,6 +1000,17 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         @media (max-width: 1024px) {
@@ -1195,7 +1265,10 @@
 
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">💰 Budget Breakdown</div>
+                    <div class="card-title">
+                        💰 Budget Breakdown
+                        <span style="margin-left: 12px; padding: 4px 12px; background: rgba(16, 185, 129, 0.1); color: var(--success); border-radius: 6px; font-size: 12px; font-weight: 600;">👥 Visible to all members</span>
+                    </div>
                     <div class="card-actions">
                         <button class="btn btn-secondary btn-sm" onclick="sortBudgetByPriority()">Sort Priority</button>
                         <button class="btn btn-secondary btn-sm" onclick="sortBudgetByAmount()">Sort Amount</button>
@@ -1253,7 +1326,10 @@
 
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">🏦 Monthly Savings</div>
+                    <div class="card-title">
+                        🏦 Monthly Savings
+                        <span style="margin-left: 12px; padding: 4px 12px; background: rgba(16, 185, 129, 0.1); color: var(--success); border-radius: 6px; font-size: 12px; font-weight: 600;">👥 Visible to all members</span>
+                    </div>
                     <button class="btn btn-primary btn-sm" onclick="addSavingsEntry()">+ Add Month</button>
                 </div>
 
@@ -1348,7 +1424,10 @@
 
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">🎒 Packing Categories</div>
+                    <div class="card-title">
+                        🎒 Packing Categories
+                        <span style="margin-left: 12px; padding: 4px 12px; background: rgba(16, 185, 129, 0.1); color: var(--success); border-radius: 6px; font-size: 12px; font-weight: 600;">👥 Visible to all members</span>
+                    </div>
                     <div class="card-actions">
                         <button class="btn btn-secondary btn-sm" onclick="addSmartSuggestions()">💡 Suggestions</button>
                         <button class="btn btn-primary btn-sm" onclick="addPackingCategory()">+ Category</button>
@@ -1594,6 +1673,38 @@
             </div>
         </div>
     </div>
+    
+    <!-- Quick Actions FAB -->
+    <div class="quick-actions-fab" id="quickActionsFab" onclick="toggleQuickActions()">
+        <span style="font-size: 24px;">⚡</span>
+    </div>
+    
+    <div class="quick-actions-menu" id="quickActionsMenu">
+        <div style="padding: 16px; border-bottom: 1px solid var(--border);">
+            <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Quick Actions</h3>
+        </div>
+        <div class="quick-action" onclick="addBudgetItem(); showPage('budget'); toggleQuickActions();">
+            💰 Add Budget Item
+        </div>
+        <div class="quick-action" onclick="addBooking(); showPage('bookings'); toggleQuickActions();">
+            🎫 Add Booking
+        </div>
+        <div class="quick-action" onclick="addDestination(); showPage('destinations'); toggleQuickActions();">
+            📍 Add Destination
+        </div>
+        <div class="quick-action" onclick="addDay(); showPage('itinerary'); toggleQuickActions();">
+            🗓️ Add Day to Itinerary
+        </div>
+        <div class="quick-action" onclick="showNotificationModal(); toggleQuickActions();">
+            📨 Send Notification
+        </div>
+        <div class="quick-action" onclick="exportToPDF(); toggleQuickActions();">
+            📄 Export to PDF
+        </div>
+        <div class="quick-action" onclick="showWeatherWidget(); toggleQuickActions();">
+            🌤️ Check Weather
+        </div>
+    </div>
 
     <!-- Modals -->
     <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
@@ -1613,6 +1724,8 @@
         
         let user = null;
         let currentTrip = null;
+        let currentPage = 'overview'; // Track current page/tab
+        let realtimeChannels = []; // Store active subscriptions
 
         // Data Structure
         let tripData = {
@@ -1858,14 +1971,15 @@
                 returnDate: document.getElementById('returnDate').value
             };
             
-            // Save PERSONAL data to trip_data (per user)
+            // Save PERSONAL data to trip_data (per user) - Always visible to members
             const personalTypes = ['budget', 'savings', 'logistics', 'packing']; // REMOVED 'bookings'
             for (const type of personalTypes) {
                 await sb.from('trip_data').upsert({
                     trip_id: currentTrip,
                     user_id: user.id,
                     data_type: type,
-                    data: tripData[type] || []
+                    data: tripData[type] || [],
+                    visibility: 'members' // Public to all trip members
                 }, { onConflict: 'trip_id,user_id,data_type' });
             }
             
@@ -1914,6 +2028,526 @@
             }).eq('id', currentTrip);
         }
 
+        // REAL-TIME SUBSCRIPTIONS
+        function setupRealtime() {
+            // Clean up old subscriptions
+            realtimeChannels.forEach(channel => sb.removeChannel(channel));
+            realtimeChannels = [];
+            
+            console.log('🔴 Setting up real-time subscriptions for trip:', currentTrip);
+            
+            // Subscribe to trips table changes (dates, destination)
+            const tripsChannel = sb.channel(`trips:${currentTrip}`)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'trips',
+                    filter: `id=eq.${currentTrip}`
+                }, (payload) => {
+                    console.log('🔴 REALTIME: Trips changed', payload);
+                    showLiveUpdateIndicator();
+                    reloadDataPreservingPage();
+                })
+                .subscribe();
+            
+            realtimeChannels.push(tripsChannel);
+            
+            // Subscribe to shared_trip_data changes (destinations, itinerary, bookings, etc.)
+            const sharedDataChannel = sb.channel(`shared_data:${currentTrip}`)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'shared_trip_data',
+                    filter: `trip_id=eq.${currentTrip}`
+                }, (payload) => {
+                    console.log('🔴 REALTIME: Shared data changed', payload);
+                    showLiveUpdateIndicator();
+                    reloadDataPreservingPage();
+                })
+                .subscribe();
+            
+            realtimeChannels.push(sharedDataChannel);
+            
+            // Subscribe to trip_members changes (someone joins/leaves)
+            const membersChannel = sb.channel(`members:${currentTrip}`)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'trip_members',
+                    filter: `trip_id=eq.${currentTrip}`
+                }, (payload) => {
+                    console.log('🔴 REALTIME: Members changed', payload);
+                    showLiveUpdateIndicator();
+                    reloadDataPreservingPage();
+                })
+                .subscribe();
+            
+            realtimeChannels.push(membersChannel);
+            
+            // Subscribe to notifications
+            const notificationsChannel = sb.channel(`notifications:${user.id}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`
+                }, (payload) => {
+                    console.log('🔴 REALTIME: New notification', payload);
+                    loadNotifications(); // Reload notification bell
+                })
+                .subscribe();
+            
+            realtimeChannels.push(notificationsChannel);
+            
+            console.log('✅ Real-time subscriptions active:', realtimeChannels.length);
+        }
+        
+        async function reloadDataPreservingPage() {
+            // Debounce rapid changes
+            clearTimeout(window.reloadTimer);
+            window.reloadTimer = setTimeout(async () => {
+                await loadData();
+                
+                // Re-render based on current page
+                renderAll();
+                
+                // Ensure current page stays active
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById(currentPage).classList.add('active');
+                
+                console.log('✅ Data reloaded, staying on page:', currentPage);
+            }, 300); // 300ms debounce
+        }
+        
+        function showLiveUpdateIndicator() {
+            // Show brief indicator that data is syncing
+            let indicator = document.getElementById('liveIndicator');
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'liveIndicator';
+                indicator.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: linear-gradient(135deg, var(--success) 0%, var(--primary) 100%);
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    z-index: 10000;
+                    animation: slideIn 0.3s ease;
+                `;
+                indicator.innerHTML = '🔴 Live Update';
+                document.body.appendChild(indicator);
+            }
+            
+            indicator.style.display = 'block';
+            
+            // Hide after 2 seconds
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 2000);
+        }
+        
+        // QUICK ACTIONS
+        function toggleQuickActions() {
+            const menu = document.getElementById('quickActionsMenu');
+            menu.classList.toggle('active');
+        }
+        
+        // Close quick actions when clicking outside
+        document.addEventListener('click', (e) => {
+            const fab = document.getElementById('quickActionsFab');
+            const menu = document.getElementById('quickActionsMenu');
+            if (menu && fab && !fab.contains(e.target) && !menu.contains(e.target)) {
+                menu.classList.remove('active');
+            }
+        });
+        
+        // WEATHER WIDGET
+        async function showWeatherWidget() {
+            const destination = document.getElementById('destination').value || 'Berlin';
+            const departure = document.getElementById('departureDate').value;
+            
+            if (!departure) {
+                showErrorToast('Please set a departure date first');
+                return;
+            }
+            
+            showModal(`
+                <div style="max-width: 500px;">
+                    <h2 style="margin-bottom: 20px;">🌤️ Weather Forecast</h2>
+                    <div style="text-align: center; padding: 40px; background: var(--bg-main); border-radius: 12px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">🌤️</div>
+                        <h3 style="margin-bottom: 8px;">${destination}</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px;">${new Date(departure).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                        <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.8;">
+                            <p>💡 Tip: Check weather closer to your trip date for accurate forecasts.</p>
+                            <p style="margin-top: 12px;">Search: <strong>"${destination} weather ${new Date(departure).toLocaleDateString('en-US', { month: 'long' })}"</strong></p>
+                        </div>
+                    </div>
+                    <button onclick="closeModal()" class="btn btn-primary" style="width: 100%; margin-top: 20px;">Got it</button>
+                </div>
+            `);
+        }
+        
+        // PRIVACY SETTINGS
+        async function updatePrivacy(dataType, visibility) {
+            await sb.from('trip_data').update({
+                visibility: visibility
+            }).eq('trip_id', currentTrip)
+              .eq('user_id', user.id)
+              .eq('data_type', dataType);
+            
+            showSuccessToast(`Privacy updated: ${visibility === 'private' ? '🔒 Only you' : '👥 All members'} can see your ${dataType}`);
+        }
+        
+        async function loadPrivacySettings() {
+            const { data } = await sb
+                .from('trip_data')
+                .select('data_type, visibility')
+                .eq('trip_id', currentTrip)
+                .eq('user_id', user.id);
+            
+            if (data) {
+                data.forEach(row => {
+                    const select = document.getElementById(`${row.data_type}Visibility`);
+                    if (select) {
+                        select.value = row.visibility || 'private';
+                    }
+                });
+            }
+        }
+        
+        // VIEW OTHER MEMBERS' DATA (All data is public to members)
+        async function viewMemberData(memberId) {
+            try {
+                // Fetch member profile
+                const { data: profile, error: profileError } = await sb
+                    .from('profiles')
+                    .select('username, email')
+                    .eq('id', memberId)
+                    .maybeSingle();
+                
+                if (profileError) {
+                    console.error('Profile fetch error:', profileError);
+                    showErrorToast('Failed to load member profile');
+                    return;
+                }
+                
+                const memberName = profile?.username || profile?.email?.split('@')[0] || 'Member';
+                
+                // Fetch their personal data (all public to members now)
+                const { data: memberData, error: dataError } = await sb
+                    .from('trip_data')
+                    .select('data_type, data')
+                    .eq('trip_id', currentTrip)
+                    .eq('user_id', memberId);
+                
+                if (dataError) {
+                    console.error('Data fetch error:', dataError);
+                    showErrorToast('Failed to load member data');
+                    return;
+                }
+                
+                if (!memberData || memberData.length === 0) {
+                    showModal(`
+                        <div style="max-width: 500px; text-align: center; padding: 20px;">
+                            <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
+                            <h2 style="margin-bottom: 12px;">${memberName}'s Trip Data</h2>
+                            <p style="color: var(--text-secondary); margin: 20px 0;">This member hasn't added any personal data yet.</p>
+                            <p style="color: var(--text-tertiary); font-size: 14px; margin-top: 12px;">They can add budget, savings, packing lists, and logistics info.</p>
+                            <button onclick="closeModal()" class="btn btn-primary" style="margin-top: 20px;">Close</button>
+                        </div>
+                    `);
+                    return;
+                }
+                
+                let content = `
+                    <div style="max-width: 800px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                            <div>
+                                <h2>👤 ${memberName}'s Trip Planning</h2>
+                                <p style="color: var(--text-secondary); margin-top: 4px;">All data is visible to help coordinate the trip</p>
+                            </div>
+                            <button onclick="closeModal()" class="btn btn-secondary btn-sm">✕ Close</button>
+                        </div>
+                        <div style="max-height: 60vh; overflow-y: auto;">
+                `;
+                
+                memberData.forEach(item => {
+                    const icon = {
+                        budget: '💰',
+                        savings: '🏦',
+                        packing: '🎒',
+                        logistics: '📋'
+                    }[item.data_type] || '📄';
+                    
+                    const title = {
+                        budget: 'Budget Planning',
+                        savings: 'Savings Progress',
+                        packing: 'Packing List',
+                        logistics: 'Trip Logistics'
+                    }[item.data_type] || item.data_type;
+                    
+                    content += `
+                        <div class="card" style="margin-bottom: 16px;">
+                            <h3 style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 24px;">${icon}</span>
+                                <span>${title}</span>
+                            </h3>
+                            ${renderMemberDataType(item.data_type, item.data)}
+                        </div>
+                    `;
+                });
+                
+                content += `
+                        </div>
+                    </div>
+                `;
+                
+                showModal(content);
+            } catch (err) {
+                console.error('Unexpected error in viewMemberData:', err);
+                showErrorToast('Something went wrong. Please try again.');
+            }
+        }
+        
+        function renderMemberDataType(type, data) {
+            if (!data || (Array.isArray(data) && data.length === 0)) {
+                return '<p style="color: var(--text-secondary); padding: 20px; text-align: center; background: var(--bg-main); border-radius: 8px;">No data added yet</p>';
+            }
+            
+            if (type === 'budget' && Array.isArray(data)) {
+                const total = data.reduce((sum, item) => sum + (item.amount || 0), 0);
+                const totalEur = total / exchangeRate;
+                return `
+                    <div style="margin-bottom: 16px; padding: 16px; background: var(--bg-main); border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">Total Budget</div>
+                                <div style="font-size: 24px; font-weight: 700; color: var(--primary);">Rp ${total.toLocaleString()}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">EUR Equivalent</div>
+                                <div style="font-size: 20px; font-weight: 600; color: var(--success);">€${totalEur.toFixed(2)}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; font-size: 14px;">
+                            <thead><tr style="background: var(--bg-main);">
+                                <th style="padding: 10px; text-align: left;">Category</th>
+                                <th style="padding: 10px; text-align: left;">Item</th>
+                                <th style="padding: 10px; text-align: right;">EUR</th>
+                                <th style="padding: 10px; text-align: center;">Priority</th>
+                                ${data.some(i => i.notes) ? '<th style="padding: 10px; text-align: left;">Notes</th>' : ''}
+                            </tr></thead>
+                            <tbody>
+                                ${data.map(item => `
+                                    <tr style="border-bottom: 1px solid var(--border);">
+                                        <td style="padding: 10px;">${item.category || '-'}</td>
+                                        <td style="padding: 10px;">${item.item || '-'}</td>
+                                        <td style="padding: 10px; text-align: right; font-weight: 600;">€${((item.amount || 0) / exchangeRate).toFixed(2)}</td>
+                                        <td style="padding: 10px; text-align: center;">
+                                            <span style="padding: 4px 8px; background: ${item.priority === 'MUST' ? 'rgba(239, 68, 68, 0.1)' : item.priority === 'Flexible' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(99, 102, 241, 0.1)'}; color: ${item.priority === 'MUST' ? 'var(--danger)' : item.priority === 'Flexible' ? 'var(--warning)' : 'var(--primary)'}; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                                                ${item.priority || 'MUST'}
+                                            </span>
+                                        </td>
+                                        ${item.notes ? `<td style="padding: 10px; color: var(--text-secondary); font-size: 13px;">${item.notes}</td>` : data.some(i => i.notes) ? '<td></td>' : ''}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else if (type === 'savings' && Array.isArray(data)) {
+                const totalTarget = data.reduce((sum, item) => sum + (item.target || 0), 0);
+                const totalActual = data.reduce((sum, item) => sum + (item.actual || 0), 0);
+                const progressPct = totalTarget > 0 ? (totalActual / totalTarget * 100).toFixed(1) : 0;
+                
+                return `
+                    <div style="margin-bottom: 16px; padding: 16px; background: var(--bg-main); border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">Total Progress</div>
+                                <div style="font-size: 20px; font-weight: 700;">${progressPct}%</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">Saved</div>
+                                <div style="font-size: 18px; font-weight: 600; color: var(--success);">Rp ${totalActual.toLocaleString()} / ${totalTarget.toLocaleString()}</div>
+                            </div>
+                        </div>
+                        <div style="background: var(--bg-hover); border-radius: 8px; height: 8px; overflow: hidden;">
+                            <div style="background: linear-gradient(90deg, var(--success) 0%, var(--primary) 100%); height: 100%; width: ${Math.min(progressPct, 100)}%; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                    <table style="width: 100%; font-size: 14px;">
+                        <thead><tr style="background: var(--bg-main);">
+                            <th style="padding: 10px; text-align: left;">Month</th>
+                            <th style="padding: 10px; text-align: right;">Target</th>
+                            <th style="padding: 10px; text-align: right;">Actual</th>
+                            <th style="padding: 10px; text-align: center;">Status</th>
+                        </tr></thead>
+                        <tbody>
+                            ${data.map(item => {
+                                const achieved = (item.actual || 0) >= (item.target || 0);
+                                return `
+                                    <tr style="border-bottom: 1px solid var(--border);">
+                                        <td style="padding: 10px;">${item.month || '-'}</td>
+                                        <td style="padding: 10px; text-align: right;">Rp ${(item.target || 0).toLocaleString()}</td>
+                                        <td style="padding: 10px; text-align: right; font-weight: 600; color: ${achieved ? 'var(--success)' : 'var(--text-primary)'};">Rp ${(item.actual || 0).toLocaleString()}</td>
+                                        <td style="padding: 10px; text-align: center; font-size: 20px;">${achieved ? '✅' : '⏳'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } else if (type === 'packing' && Array.isArray(data)) {
+                return data.map(cat => `
+                    <div style="margin-bottom: 16px; padding: 16px; background: var(--bg-main); border-radius: 8px;">
+                        <div style="font-weight: 700; margin-bottom: 12px; font-size: 15px; color: var(--primary);">${cat.category || 'Category'}</div>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                            ${(cat.items || []).map(item => `<li style="color: var(--text-primary);">${item}</li>`).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+            } else if (type === 'logistics') {
+                // Handle logistics as text or structured data
+                if (typeof data === 'string') {
+                    return `<div style="padding: 16px; background: var(--bg-main); border-radius: 8px; white-space: pre-wrap; line-height: 1.6;">${data}</div>`;
+                } else if (Array.isArray(data)) {
+                    return data.map(item => `
+                        <div style="margin-bottom: 12px; padding: 16px; background: var(--bg-main); border-radius: 8px;">
+                            ${typeof item === 'string' ? item : JSON.stringify(item, null, 2)}
+                        </div>
+                    `).join('');
+                }
+            }
+            
+            // Fallback for unknown types
+            return `<div style="padding: 16px; background: var(--bg-main); border-radius: 8px;"><pre style="white-space: pre-wrap; margin: 0;">${JSON.stringify(data, null, 2)}</pre></div>`;
+        }
+        
+        // EXPORT TO PDF
+        async function exportToPDF() {
+            const tripName = document.getElementById('destination').value || 'My Trip';
+            const departure = document.getElementById('departureDate').value;
+            const returnDate = document.getElementById('returnDate').value;
+            
+            // Create printable content
+            let content = `
+                <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px;">
+                    <div style="text-align: center; margin-bottom: 40px;">
+                        <h1 style="font-size: 36px; color: #6366f1; margin-bottom: 8px;">✈️ ${tripName}</h1>
+                        <p style="font-size: 18px; color: #64748b;">
+                            ${departure ? new Date(departure).toLocaleDateString() : 'Date TBD'} - 
+                            ${returnDate ? new Date(returnDate).toLocaleDateString() : 'Date TBD'}
+                        </p>
+                    </div>
+                    
+                    <div style="margin-bottom: 30px;">
+                        <h2 style="border-bottom: 2px solid #6366f1; padding-bottom: 8px; margin-bottom: 16px;">📍 Destinations</h2>
+            `;
+            
+            // Add destinations
+            ['main', 'optional', 'other'].forEach(type => {
+                const dests = tripData.destinations[type] || [];
+                if (dests.length > 0) {
+                    content += `<h3 style="margin-top: 16px; color: #64748b;">${type.charAt(0).toUpperCase() + type.slice(1)} Destinations</h3><ul>`;
+                    dests.forEach(d => {
+                        content += `<li style="margin: 8px 0;">${d.city}, ${d.country}${d.notes ? ` - ${d.notes}` : ''}</li>`;
+                    });
+                    content += `</ul>`;
+                }
+            });
+            
+            content += `</div><div style="margin-bottom: 30px;">
+                        <h2 style="border-bottom: 2px solid #6366f1; padding-bottom: 8px; margin-bottom: 16px;">🗓️ Itinerary</h2>`;
+            
+            // Add itinerary
+            if (tripData.dayPlans && tripData.dayPlans.length > 0) {
+                tripData.dayPlans.forEach((day, idx) => {
+                    content += `
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="color: #6366f1;">Day ${idx + 1}${day.date ? ` - ${new Date(day.date).toLocaleDateString()}` : ''}</h3>
+                            <p style="font-weight: 600; margin: 4px 0;">📍 ${day.city || 'Location TBD'}</p>
+                            <p style="margin: 4px 0;">${day.activities || 'No activities planned yet'}</p>
+                        </div>
+                    `;
+                });
+            } else {
+                content += `<p style="color: #64748b;">No itinerary planned yet.</p>`;
+            }
+            
+            content += `</div><div style="margin-bottom: 30px;">
+                        <h2 style="border-bottom: 2px solid #6366f1; padding-bottom: 8px; margin-bottom: 16px;">🎫 Bookings</h2>`;
+            
+            // Add bookings
+            if (tripData.bookings && tripData.bookings.length > 0) {
+                content += `<table style="width: 100%; border-collapse: collapse;">
+                    <thead><tr style="background: #f1f5f9;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #e2e8f0;">Type</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #e2e8f0;">Name</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #e2e8f0;">Date</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #e2e8f0;">Confirmation</th>
+                    </tr></thead><tbody>`;
+                
+                tripData.bookings.forEach(b => {
+                    content += `
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #e2e8f0;">${b.type}</td>
+                            <td style="padding: 8px; border: 1px solid #e2e8f0;">${b.name}</td>
+                            <td style="padding: 8px; border: 1px solid #e2e8f0;">${b.datetime ? new Date(b.datetime).toLocaleDateString() : 'TBD'}</td>
+                            <td style="padding: 8px; border: 1px solid #e2e8f0;">${b.confirmation || '-'}</td>
+                        </tr>
+                    `;
+                });
+                
+                content += `</tbody></table>`;
+            } else {
+                content += `<p style="color: #64748b;">No bookings yet.</p>`;
+            }
+            
+            content += `
+                    </div>
+                    <div style="text-align: center; margin-top: 60px; padding-top: 20px; border-top: 2px solid #e2e8f0; color: #94a3b8; font-size: 14px;">
+                        Generated by Trip Planner Pro • ${new Date().toLocaleDateString()}
+                    </div>
+                </div>
+            `;
+            
+            // Open in new window for printing
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${tripName} - Trip Itinerary</title>
+                    <style>
+                        @media print {
+                            button { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${content}
+                    <div style="text-align: center; margin: 40px 0;">
+                        <button onclick="window.print()" style="background: #6366f1; color: white; padding: 12px 32px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                            🖨️ Print / Save as PDF
+                        </button>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            
+            showSuccessToast('Opening printable itinerary...');
+        }
+
         async function onTripDateChange() {
             const oldDeparture = tripData.overview.departureDate;
             const oldReturn = tripData.overview.returnDate;
@@ -1947,6 +2581,7 @@
             }
         }
         function showPage(pageId) {
+            currentPage = pageId; // Track current page for real-time reload
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
@@ -2661,6 +3296,11 @@
                         </div>
                         
                         <div style="display: flex; gap: 8px; margin-top: 16px;">
+                            ${member.user_id && member.user_id !== user.id ? `
+                                <button class="btn btn-primary btn-sm" style="flex: 1;" onclick="viewMemberData('${member.user_id}')">
+                                    👁️ View Their Data
+                                </button>
+                            ` : ''}
                             <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="toggleMemberConfirm(${idx})">
                                 ${member.confirmed ? '✗ Unconfirm' : '✓ Confirm'}
                             </button>
@@ -3540,8 +4180,10 @@
             // Load notifications
             loadNotifications();
             
-            // Poll for new notifications every 30 seconds
-            setInterval(loadNotifications, 30000);
+            // Setup real-time subscriptions (replaces polling)
+            setupRealtime();
+            
+            console.log('✅ App initialized with real-time updates');
         });
 
         // Edit Username

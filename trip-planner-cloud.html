@@ -3754,7 +3754,7 @@
         }
 
         function addPackingItem(catIdx) {
-            tripData.packing[catIdx].items.push({ name: '', packed: false });
+            tripData.packing[catIdx].items.push({ name: '', amount: 1, packed: false });
             renderPackingList();
             saveData();
         }
@@ -3766,15 +3766,28 @@
             tripData.packing.forEach((cat, catIdx) => {
                 const div = document.createElement('div');
                 div.style.cssText = 'background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 16px; padding: 16px;';
+                
+                const totalItems = cat.items.length;
+                const packedItems = cat.items.filter(i => i.packed).length;
+                const progress = totalItems > 0 ? (packedItems / totalItems) * 100 : 0;
+                
                 div.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <input type="text" value="${cat.category}" placeholder="Category name..." 
-                               style="background: transparent; border: none; font-size: 16px; font-weight: 600; color: var(--text-primary); flex: 1;"
-                               onchange="tripData.packing[${catIdx}].category = this.value; saveDataSync()">
+                        <div style="flex: 1;">
+                            <input type="text" value="${cat.category}" placeholder="Category name..." 
+                                   style="background: transparent; border: none; font-size: 16px; font-weight: 600; color: var(--text-primary); width: 100%;"
+                                   onchange="tripData.packing[${catIdx}].category = this.value; saveDataSync()">
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                                ${packedItems} / ${totalItems} packed
+                            </div>
+                        </div>
                         <div style="display: flex; gap: 8px;">
                             <button class="btn btn-success btn-sm" onclick="addPackingItem(${catIdx})">+ Item</button>
                             <button class="btn btn-danger btn-sm" onclick="deletePackingCategory(${catIdx}, this)">Delete</button>
                         </div>
+                    </div>
+                    <div style="background: var(--bg-main); border-radius: 8px; height: 6px; margin-bottom: 12px; overflow: hidden;">
+                        <div style="height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); width: ${progress}%; transition: width 0.3s;"></div>
                     </div>
                     <div id="packItems${catIdx}"></div>
                 `;
@@ -3783,12 +3796,18 @@
                 const itemsDiv = div.querySelector(`#packItems${catIdx}`);
                 cat.items.forEach((item, itemIdx) => {
                     const itemDiv = document.createElement('div');
-                    itemDiv.style.cssText = 'display: flex; gap: 10px; align-items: center; padding: 8px; background: var(--bg-main); border-radius: 6px; margin-bottom: 6px;';
+                    itemDiv.style.cssText = 'display: grid; grid-template-columns: auto 70px 1fr auto; gap: 10px; align-items: center; padding: 10px; background: var(--bg-main); border-radius: 6px; margin-bottom: 6px;';
                     itemDiv.innerHTML = `
                         <input type="checkbox" ${item.packed ? 'checked' : ''} 
-                               onchange="tripData.packing[${catIdx}].items[${itemIdx}].packed = this.checked; saveDataSync()">
-                        <input type="text" value="${item.name}" placeholder="Item..." 
-                               style="flex: 1; background: transparent; border: none; color: var(--text-primary); ${item.packed ? 'text-decoration: line-through; opacity: 0.6;' : ''}"
+                               style="width: 20px; height: 20px; cursor: pointer;"
+                               onchange="tripData.packing[${catIdx}].items[${itemIdx}].packed = this.checked; renderPackingList(); saveDataSync()">
+                        <input type="number" value="${item.amount || 1}" min="1" max="99"
+                               style="padding: 6px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); border-radius: 6px; 
+                                      color: var(--text-primary); text-align: center; font-weight: 600;"
+                               onchange="tripData.packing[${catIdx}].items[${itemIdx}].amount = parseInt(this.value) || 1; saveDataSync()">
+                        <input type="text" value="${item.name}" placeholder="Item name..." 
+                               style="background: transparent; border: none; color: var(--text-primary); 
+                                      ${item.packed ? 'text-decoration: line-through; opacity: 0.6;' : ''}"
                                onchange="tripData.packing[${catIdx}].items[${itemIdx}].name = this.value; saveDataSync()">
                         <button class="btn btn-danger btn-sm" onclick="tripData.packing[${catIdx}].items.splice(${itemIdx}, 1); renderPackingList(); saveDataSync()">✕</button>
                     `;
@@ -3810,7 +3829,7 @@
                 if (!exists) {
                     tripData.packing.push({
                         category: cat.category,
-                        items: cat.items.map(name => ({ name, packed: false })),
+                        items: cat.items.map(name => ({ name, amount: 1, packed: false })),
                         expanded: true
                     });
                 }
@@ -5446,12 +5465,70 @@
 
                 window.mapInitialized = true;
             }
+            
+            // Plot destinations after map loads
+            plotDestinationsOnMap();
         }
 
         function refreshMap() {
             if (map) {
                 map.invalidateSize();
+                plotDestinationsOnMap();
             }
+        }
+        
+        function plotDestinationsOnMap() {
+            if (!map) return;
+            
+            // Clear existing markers
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            const markers = [];
+            
+            // Get all destinations
+            ['main', 'optional', 'other', 'restaurants'].forEach(type => {
+                (tripData.destinations[type] || []).forEach(dest => {
+                    if (dest.mapsLink) {
+                        // Try to extract coordinates from Google Maps link
+                        const coords = extractCoordsFromMapsLink(dest.mapsLink);
+                        if (coords) {
+                            const marker = L.marker(coords).addTo(map);
+                            marker.bindPopup(`
+                                <strong>${dest.city || 'Unknown'}</strong><br>
+                                ${dest.placeName || ''}<br>
+                                <a href="${dest.mapsLink}" target="_blank">Open in Maps</a>
+                            `);
+                            markers.push(coords);
+                        }
+                    }
+                });
+            });
+            
+            // Fit bounds to show all markers
+            if (markers.length > 0) {
+                map.fitBounds(markers);
+            }
+        }
+        
+        function extractCoordsFromMapsLink(url) {
+            // Extract lat/lng from various Google Maps URL formats
+            // Format 1: @lat,lng
+            let match = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+            if (match) return [parseFloat(match[1]), parseFloat(match[2])];
+            
+            // Format 2: !3d and !4d
+            match = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+            if (match) return [parseFloat(match[1]), parseFloat(match[2])];
+            
+            // Format 3: q=lat,lng
+            match = url.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+            if (match) return [parseFloat(match[1]), parseFloat(match[2])];
+            
+            return null;
         }
 
         // Stats & Updates

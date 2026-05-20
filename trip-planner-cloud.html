@@ -1140,6 +1140,9 @@
                 <div class="nav-item" onclick="showPage('packing')">
                     <span class="nav-icon">🎒</span><span>Packing</span>
                 </div>
+                <div class="nav-item" onclick="showPage('todos')">
+                    <span class="nav-icon">✅</span><span>To-Do List</span>
+                </div>
                 <div class="nav-item" onclick="showPage('group')">
                     <span class="nav-icon">👥</span><span>Group</span>
                 </div>
@@ -1458,6 +1461,22 @@
                     </div>
                 </div>
                 <div id="packingContainer"></div>
+            </div>
+        </div>
+
+        <!-- To-Do List Page -->
+        <div class="page" id="todos">
+            <div class="page-header">
+                <h1 class="page-title">✅ Shared To-Do List</h1>
+                <p class="page-subtitle">Group tasks with deadlines • Everyone can see and track</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📋 Trip Preparation Tasks</div>
+                    <button class="btn btn-primary btn-sm" onclick="addTodo()">+ Add Task</button>
+                </div>
+                <div id="todosContainer" style="margin-top: 20px;"></div>
             </div>
         </div>
 
@@ -1929,7 +1948,8 @@
                     if (row.data_type === 'destinations') tripData.destinations = row.data;
                     if (row.data_type === 'itinerary') tripData.dayPlans = row.data;
                     if (row.data_type === 'shared_expenses') tripData.sharedExpenses = row.data;
-                    if (row.data_type === 'bookings') tripData.bookings = row.data; // BOOKINGS NOW SHARED
+                    if (row.data_type === 'bookings') tripData.bookings = row.data;
+                    if (row.data_type === 'todos') tripData.todos = row.data;
                 }
             }
             
@@ -2009,6 +2029,7 @@
             if (!tripData.sharedExpenses) tripData.sharedExpenses = [];
             if (!tripData.packing) tripData.packing = [];
             if (!tripData.bookings) tripData.bookings = [];
+            if (!tripData.todos) tripData.todos = [];
             if (!tripData.destinations) tripData.destinations = { main: [], optional: [], other: [], restaurants: [] };
             if (!tripData.dayPlans) tripData.dayPlans = [];
             
@@ -2115,6 +2136,15 @@
                         trip_id: currentTrip,
                         data_type: 'bookings',
                         data: tripData.bookings || [],
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'todos',
+                        data: tripData.todos || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
                 );
@@ -2416,8 +2446,11 @@
                 `;
                 document.body.appendChild(banner);
                 
-                // Adjust content margin
-                document.querySelector('.container').style.marginTop = '80px';
+                // Adjust content margin - sidebar structure
+                const sidebar = document.querySelector('.sidebar');
+                const mainContent = document.querySelector('.main-content');
+                if (sidebar) sidebar.style.marginTop = '80px';
+                if (mainContent) mainContent.style.marginTop = '80px';
                 
                 // Render their data
                 renderAll();
@@ -2448,9 +2481,11 @@
             const banner = document.getElementById('viewingBanner');
             if (banner) banner.remove();
             
-            // Reset margin - check if container exists
-            const container = document.querySelector('.container');
-            if (container) container.style.marginTop = '0';
+            // Reset margins
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            if (sidebar) sidebar.style.marginTop = '0';
+            if (mainContent) mainContent.style.marginTop = '0';
             
             // Re-render own data
             renderAll();
@@ -3392,6 +3427,55 @@
             saveData();
         }
 
+        function addTodo() {
+            if (!tripData.todos) tripData.todos = [];
+            tripData.todos.push({ id: Date.now(), task: '', assignedTo: '', deadline: '', priority: 'Medium', completed: false, createdBy: user.email, createdAt: new Date().toISOString() });
+            renderTodos();
+        }
+        
+        function renderTodos() {
+            if (!tripData.todos) tripData.todos = [];
+            const container = document.getElementById('todosContainer');
+            if (!container) return;
+            if (tripData.todos.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-secondary);"><div style="font-size: 48px;">📝</div><p>No tasks yet!</p></div>';
+                return;
+            }
+            const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
+            const sorted = [...tripData.todos].sort((a, b) => {
+                if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
+            });
+            container.innerHTML = sorted.map(todo => {
+                const idx = tripData.todos.findIndex(t => t.id === todo.id);
+                const overdue = todo.deadline && new Date(todo.deadline) < new Date() && !todo.completed;
+                return `<div style="display: flex; gap: 16px; padding: 20px; background: ${todo.completed ? 'var(--bg-main)' : 'var(--bg-hover)'}; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid ${todo.completed ? 'var(--success)' : todo.priority === 'High' ? 'var(--danger)' : todo.priority === 'Medium' ? '#f59e0b' : 'var(--primary)'};">
+                    <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="tripData.todos[${idx}].completed = this.checked; renderTodos(); saveData();" style="width: 24px; height: 24px; cursor: pointer;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                            <input type="text" value="${todo.task}" placeholder="Task..." onchange="tripData.todos[${idx}].task = this.value; saveData();" style="flex: 1; padding: 8px; ${todo.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                            <select onchange="tripData.todos[${idx}].priority = this.value; renderTodos(); saveData();" style="padding: 8px;">
+                                <option ${todo.priority === 'High' ? 'selected' : ''}>High</option>
+                                <option ${todo.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                                <option ${todo.priority === 'Low' ? 'selected' : ''}>Low</option>
+                            </select>
+                            <button class="btn btn-danger btn-sm" onclick="deleteTodo(${idx})">✕</button>
+                        </div>
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                            <div style="flex: 1;"><label style="font-size: 12px; color: var(--text-secondary);">👤 Assigned</label><input value="${todo.assignedTo || ''}" placeholder="Name..." onchange="tripData.todos[${idx}].assignedTo = this.value; saveData();" style="width: 100%; padding: 6px;"></div>
+                            <div style="flex: 1;"><label style="font-size: 12px; color: var(--text-secondary);">📅 Deadline</label><input type="date" value="${todo.deadline || ''}" onchange="tripData.todos[${idx}].deadline = this.value; renderTodos(); saveData();" style="width: 100%; padding: 6px;"></div>
+                        </div>
+                        ${overdue ? '<div style="margin-top: 8px; padding: 6px 12px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; font-size: 13px; color: var(--danger); font-weight: 600;">⚠️ OVERDUE</div>' : ''}
+                        <div style="margin-top: 8px; font-size: 12px; color: var(--text-tertiary);">By ${todo.createdBy} • ${new Date(todo.createdAt).toLocaleDateString()}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        
+        function deleteTodo(idx) {
+            if (confirm('Delete?')) { tripData.todos.splice(idx, 1); renderTodos(); saveData(); }
+        }
+
         function renderGroupMembers() {
             const grid = document.getElementById('membersGrid');
             if (!tripData.group || tripData.group.length === 0) {
@@ -4238,6 +4322,7 @@
             renderPendingInvitations();
             updateGroupStats();
             renderPackingList();
+            renderTodos();
             renderBookings();
             renderSharedExpenses();
             renderDestinations();

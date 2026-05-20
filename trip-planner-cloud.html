@@ -3202,7 +3202,7 @@
             saveData().then(() => reloadMemberBudgets());
         }
 
-        function deleteBudgetItem(idx, btn) {
+        async function deleteBudgetItem(idx, btn) {
             if (btn.textContent === 'Delete') {
                 btn.textContent = 'Confirm?';
                 btn.style.background = '#dc2626';
@@ -3213,11 +3213,15 @@
                     }
                 }, 3000);
             } else {
+                isLocalUpdate = true;
                 tripData.budget.splice(idx, 1);
                 renderBudgetTable();
                 updateAllStats();
-                saveData().then(() => reloadMemberBudgets());
+                await saveData();
+                await reloadMemberBudgets();
+                setTimeout(() => { isLocalUpdate = false; }, 500);
             }
+        }
         }
 
         function renderBudgetTable() {
@@ -3383,16 +3387,18 @@
             saveData();
         }
 
-        function deleteSavingsEntry(idx, btn) {
+        async function deleteSavingsEntry(idx, btn) {
             if (btn.textContent === 'Delete') {
                 btn.textContent = 'Confirm?';
                 btn.style.background = '#dc2626';
                 setTimeout(() => { if (btn.textContent === 'Confirm?') { btn.textContent = 'Delete'; btn.style.background = ''; } }, 3000);
             } else {
+                isLocalUpdate = true;
                 tripData.savings.splice(idx, 1);
                 renderSavingsTable();
                 updateAllStats();
-                saveData();
+                await saveData();
+                setTimeout(() => { isLocalUpdate = false; }, 500);
             }
         }
 
@@ -3440,15 +3446,17 @@
             }
         }
 
-        function deleteBooking(idx, btn) {
+        async function deleteBooking(idx, btn) {
             if (btn.textContent === 'Delete') {
                 btn.textContent = 'Confirm?';
                 btn.style.background = '#dc2626';
                 setTimeout(() => { if (btn.textContent === 'Confirm?') { btn.textContent = 'Delete'; btn.style.background = ''; } }, 3000);
             } else {
+                isLocalUpdate = true; // Prevent real-time reload
                 tripData.bookings.splice(idx, 1);
+                await saveData();
                 renderBookings();
-                saveData();
+                setTimeout(() => { isLocalUpdate = false; }, 500); // Reset after save completes
             }
         }
 
@@ -3663,16 +3671,18 @@
             saveData();
         }
 
-        function deleteLogisticItem(idx, btn) {
+        async function deleteLogisticItem(idx, btn) {
             if (btn.textContent === 'Delete') {
                 btn.textContent = 'Confirm?';
                 btn.style.background = '#dc2626';
                 setTimeout(() => { if (btn.textContent === 'Confirm?') { btn.textContent = 'Delete'; btn.style.background = ''; } }, 3000);
             } else {
+                isLocalUpdate = true;
                 tripData.logistics.splice(idx, 1);
                 renderLogisticsTable();
                 updateAllStats();
-                saveData();
+                await saveData();
+                setTimeout(() => { isLocalUpdate = false; }, 500);
             }
         }
 
@@ -3704,15 +3714,17 @@
             saveData();
         }
 
-        function deletePackingCategory(idx, btn) {
+        async function deletePackingCategory(idx, btn) {
             if (btn.textContent === 'Delete') {
                 btn.textContent = 'Confirm?';
                 btn.style.background = '#dc2626';
                 setTimeout(() => { if (btn.textContent === 'Confirm?') { btn.textContent = 'Delete'; btn.style.background = ''; } }, 3000);
             } else {
+                isLocalUpdate = true;
                 tripData.packing.splice(idx, 1);
                 renderPackingList();
-                saveData();
+                await saveData();
+                setTimeout(() => { isLocalUpdate = false; }, 500);
             }
         }
 
@@ -4057,13 +4069,15 @@
             }).join('');
         }
         
-        function deleteTodo(idx) {
+        async function deleteTodo(idx) {
             const task = tripData.todos[idx].task || 'this task';
             if (!confirm(`Delete "${task}"?`)) return;
             if (!confirm('Are you sure? This cannot be undone.')) return;
+            isLocalUpdate = true;
             tripData.todos.splice(idx, 1);
             renderTodos();
-            saveData();
+            await saveData();
+            setTimeout(() => { isLocalUpdate = false; }, 500);
         }
         
         // SHARED CHECKLIST (Owner creates template, members track own progress)
@@ -4267,13 +4281,15 @@
             saveData();
         }
         
-        function deleteChecklistItem(idx) {
+        async function deleteChecklistItem(idx) {
             if (!confirm('Delete this checklist item? This will remove it for everyone.')) return;
+            isLocalUpdate = true;
             const itemId = tripData.sharedChecklist[idx].id;
             tripData.sharedChecklist.splice(idx, 1);
             if (tripData.myChecklistProgress) delete tripData.myChecklistProgress[itemId];
             renderSharedChecklist();
-            saveData();
+            await saveData();
+            setTimeout(() => { isLocalUpdate = false; }, 500);
         }
 
         function renderGroupMembers() {
@@ -4465,15 +4481,17 @@
             saveData();
         }
 
-        function deleteSharedExpense(idx, btn) {
+        async function deleteSharedExpense(idx, btn) {
             if (btn.textContent === 'Delete') {
                 btn.textContent = 'Confirm?';
                 btn.style.background = '#dc2626';
                 setTimeout(() => { if (btn.textContent === 'Confirm?') { btn.textContent = 'Delete'; btn.style.background = ''; } }, 3000);
             } else {
+                isLocalUpdate = true;
                 tripData.sharedExpenses.splice(idx, 1);
                 renderSharedExpenses();
-                saveData();
+                await saveData();
+                setTimeout(() => { isLocalUpdate = false; }, 500);
             }
         }
 
@@ -4918,16 +4936,19 @@
             return tripData.dayPlans.filter(day => day.city === city).length;
         }
 
-        function deleteDestination(type, idx, btn) {
+        async function deleteDestination(type, idx, btn) {
             if (btn.textContent === 'Delete') {
                 btn.textContent = 'Confirm?';
                 btn.style.background = '#dc2626';
                 setTimeout(() => { if (btn.textContent === 'Confirm?') { btn.textContent = 'Delete'; btn.style.background = ''; } }, 3000);
             } else {
+                isLocalUpdate = true;
                 tripData.destinations[type].splice(idx, 1);
                 renderDestinations();
-                saveData();
+                await saveData();
+                setTimeout(() => { isLocalUpdate = false; }, 500);
             }
+        }
         }
 
         // Itinerary Functions
@@ -5035,28 +5056,34 @@
             saveData();
         }
 
-        function deleteActivity(dayIdx, actIdx, btn) {
+        async function deleteActivity(dayIdx, actIdx, btn) {
             if (btn.textContent === '✕') {
                 btn.textContent = '?';
                 btn.style.background = '#dc2626';
                 setTimeout(() => { if (btn.textContent === '?') { btn.textContent = '✕'; btn.style.background = ''; } }, 3000);
             } else {
+                isLocalUpdate = true;
                 tripData.dayPlans[dayIdx].activities.splice(actIdx, 1);
                 renderDayPlans();
-                saveData();
+                await saveData();
+                setTimeout(() => { isLocalUpdate = false; }, 500);
             }
         }
 
-        function deleteDayPlan(idx, btn) {
+        async function deleteDayPlan(idx, btn) {
             if (btn.textContent === 'Delete') {
                 btn.textContent = 'Confirm?';
                 btn.style.background = '#dc2626';
                 setTimeout(() => { if (btn.textContent === 'Confirm?') { btn.textContent = 'Delete'; btn.style.background = ''; } }, 3000);
             } else {
+                isLocalUpdate = true;
                 tripData.dayPlans.splice(idx, 1);
                 tripData.dayPlans.forEach((p, i) => p.day = i + 1);
                 renderDayPlans();
-                saveData();
+                await saveData();
+                setTimeout(() => { isLocalUpdate = false; }, 500);
+            }
+        }
             }
         }
 

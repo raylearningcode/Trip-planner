@@ -5141,6 +5141,30 @@
             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
         }
 
+        function formatTimeInput(input) {
+            let value = input.value.replace(/[^\d]/g, ''); // Remove non-digits
+            
+            // Auto-format as user types
+            if (value.length >= 2) {
+                let hours = value.substring(0, 2);
+                let minutes = value.substring(2, 4);
+                
+                // Limit hours to 23
+                if (parseInt(hours) > 23) hours = '23';
+                // Limit minutes to 59
+                if (minutes && parseInt(minutes) > 59) minutes = '59';
+                
+                value = hours + (minutes ? ':' + minutes : '');
+            }
+            
+            input.value = value;
+            
+            // If user clears completely, set to 00:00
+            if (input.value === '') {
+                input.value = '00:00';
+            }
+        }
+
         function renderDayPlans() {
             const container = document.getElementById('dayPlansContainer');
             container.innerHTML = '';
@@ -5303,13 +5327,15 @@
                         </div>
                         
                         <div style="display: grid; grid-template-columns: 90px 90px 1fr auto; gap: 12px; align-items: center; margin-bottom: 12px;">
-                            <input type="text" value="${act.timeStart}" placeholder="09:00" 
+                            <input type="text" value="${act.timeStart}" placeholder="09:00" maxlength="5"
                                    style="padding: 10px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); 
                                           border-radius: 8px; color: var(--text-primary); text-align: center; font-weight: 600;"
+                                   oninput="formatTimeInput(this)"
                                    onchange="tripData.dayPlans[${idx}].activities[${actIdx}].timeStart = this.value; saveDataSync(); renderDayPlans()">
-                            <input type="text" value="${act.timeEnd}" placeholder="10:00" 
+                            <input type="text" value="${act.timeEnd}" placeholder="10:00" maxlength="5"
                                    style="padding: 10px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); 
                                           border-radius: 8px; color: var(--text-primary); text-align: center; font-weight: 600;"
+                                   oninput="formatTimeInput(this)"
                                    onchange="tripData.dayPlans[${idx}].activities[${actIdx}].timeEnd = this.value; saveDataSync(); renderDayPlans()">
                             <select style="padding: 10px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); 
                                            border-radius: 8px; color: var(--text-primary);"

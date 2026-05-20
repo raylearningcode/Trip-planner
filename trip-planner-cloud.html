@@ -2298,33 +2298,6 @@
             `);
         }
         
-        // PRIVACY SETTINGS
-        async function updatePrivacy(dataType, visibility) {
-            await sb.from('trip_data').update({
-                visibility: visibility
-            }).eq('trip_id', currentTrip)
-              .eq('user_id', user.id)
-              .eq('data_type', dataType);
-            
-            showSuccessToast(`Privacy updated: ${visibility === 'private' ? '🔒 Only you' : '👥 All members'} can see your ${dataType}`);
-        }
-        
-        async function loadPrivacySettings() {
-            const { data } = await sb
-                .from('trip_data')
-                .select('data_type, visibility')
-                .eq('trip_id', currentTrip)
-                .eq('user_id', user.id);
-            
-            if (data) {
-                data.forEach(row => {
-                    const select = document.getElementById(`${row.data_type}Visibility`);
-                    if (select) {
-                        select.value = row.visibility || 'private';
-                    }
-                });
-            }
-        }
         
         // VIEW OTHER MEMBERS' DATA - Instagram-style (switch to their view)
         let viewingMemberId = null; // Track who we're viewing

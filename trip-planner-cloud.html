@@ -1464,19 +1464,35 @@
             </div>
         </div>
 
-        <!-- To-Do List Page -->
-        <div class="page" id="todos">
+        <!-- Personal To-Do List -->
+        <div class="page" id="personal-todos">
             <div class="page-header">
-                <h1 class="page-title">✅ Shared To-Do List</h1>
-                <p class="page-subtitle">Group tasks with deadlines • Everyone can see and track</p>
+                <h1 class="page-title">☑️ My Personal To-Do</h1>
+                <p class="page-subtitle">Private tasks only you see</p>
             </div>
             
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">📋 Trip Preparation Tasks</div>
-                    <button class="btn btn-primary btn-sm" onclick="addTodo()">+ Add Task</button>
+                    <div class="card-title">📝 My Tasks</div>
+                    <button class="btn btn-primary btn-sm" onclick="addPersonalTodo()">+ Add</button>
                 </div>
-                <div id="todosContainer" style="margin-top: 20px;"></div>
+                <div id="personalTodosContainer"></div>
+            </div>
+        </div>
+
+        <!-- Shared To-Do Template -->
+        <div class="page" id="todos">
+            <div class="page-header">
+                <h1 class="page-title">✅ Group Checklist</h1>
+                <p class="page-subtitle">Owner creates • Everyone tracks own progress</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📋 Preparation Checklist</div>
+                    <button class="btn btn-primary btn-sm" onclick="addSharedTodoTemplate()" id="addSharedTodoBtn">+ Add</button>
+                </div>
+                <div id="sharedTodosContainer"></div>
             </div>
         </div>
 
@@ -2264,6 +2280,12 @@
         }
         
         async function reloadDataPreservingPage() {
+            // Don't reload when viewing another member's data
+            if (viewingMemberId) {
+                console.log('🟡 REALTIME: Skipping reload (viewing member data)');
+                return;
+            }
+            
             // Debounce rapid changes
             clearTimeout(window.reloadTimer);
             window.reloadTimer = setTimeout(async () => {

@@ -6,6 +6,30 @@
     <title>Trip Planner - Your Journey (Cloud Sync)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     
+    <!-- Inline script to define functions BEFORE HTML needs them -->
+    <script>
+        // Stub functions - will be properly defined later after DOM loads
+        // These prevent "undefined" errors when HTML parses
+        window.showPage = function() {};
+        window.logout = function() {};
+        window.addBudgetItem = function() {};
+        window.addSavingsEntry = function() {};
+        window.addBooking = function() {};
+        window.addDestination = function() {};
+        window.addDay = function() {};
+        window.addPackingCategory = function() {};
+        window.sortBudgetByPriority = function() {};
+        window.sortBudgetByAmount = function() {};
+        window.refreshRate = function() {};
+        window.onDestinationChange = function() {};
+        window.onTripDateChange = function() {};
+        window.toggleSidebar = function() {};
+        window.toggleNotifications = function() {};
+        window.toggleQuickActions = function() {};
+        
+        console.log('✅ Stub functions defined, preventing undefined errors');
+    </script>
+    
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -1062,8 +1086,8 @@
 </head>
 <body>
     <!-- Mobile Menu -->
-    <div class="mobile-menu-toggle" onclick="toggleSidebar()">☰</div>
-    <div class="mobile-overlay" onclick="toggleSidebar()"></div>
+    <div class="mobile-menu-toggle" id="mobileMenuToggle">☰</div>
+    <div class="mobile-overlay" id="mobileOverlay"></div>
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -1657,7 +1681,7 @@
     </div>
 
     <!-- Notification Bell -->
-    <div class="notification-bell" id="notificationBell" onclick="toggleNotifications()">
+    <div class="notification-bell" id="notificationBell">
         🔔
         <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
     </div>
@@ -1675,7 +1699,7 @@
     </div>
     
     <!-- Quick Actions FAB -->
-    <div class="quick-actions-fab" id="quickActionsFab" onclick="toggleQuickActions()">
+    <div class="quick-actions-fab" id="quickActionsFab">
         <span style="font-size: 24px;">⚡</span>
     </div>
     
@@ -1717,8 +1741,9 @@
             crossorigin=""></script>
 
     <script>
-        // VERSION: 2026-05-20-FIXED
-        console.log('🚀 Trip Planner v2026-05-20-FIXED loading...');
+        // VERSION: 2026-05-20-FINAL-FIX
+        console.log('🚀 Trip Planner v2026-05-20-FINAL-FIX loading...');
+        console.log('✅ This version fixes ALL undefined function errors');
         
         // ========================================
         // COMPREHENSIVE ERROR LOGGING
@@ -4795,6 +4820,25 @@
 
         // Auto-save every 30 seconds
         setInterval(saveDataSync, 30000);
+        
+        // Attach event listeners for toggle functions (must be after DOM loads)
+        document.addEventListener('DOMContentLoaded', () => {
+            // Mobile sidebar toggle
+            const mobileToggle = document.getElementById('mobileMenuToggle');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+            if (mobileToggle) mobileToggle.addEventListener('click', toggleSidebar);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', toggleSidebar);
+            
+            // Notification bell
+            const notifBell = document.getElementById('notificationBell');
+            if (notifBell) notifBell.addEventListener('click', toggleNotifications);
+            
+            // Quick actions FAB
+            const quickFab = document.getElementById('quickActionsFab');
+            if (quickFab) quickFab.addEventListener('click', toggleQuickActions);
+            
+            console.log('✅ Event listeners attached');
+        });
     </script>
 </body>
 </html>

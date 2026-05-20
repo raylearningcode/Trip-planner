@@ -4983,30 +4983,30 @@
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Country</label>
-                                        <input type="text" value="${dest.country}" placeholder="Germany" 
+                                        <input type="text" value="${dest.country || ''}" placeholder="Germany" 
                                                style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);"
-                                               oninput="tripData.destinations['${type}'][${idx}].country = this.value"
+                                               oninput="if(tripData.destinations['${type}'][${idx}]) tripData.destinations['${type}'][${idx}].country = this.value"
                                                onblur="saveDataSync(); renderDestinations()">
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">City</label>
-                                        <input type="text" value="${dest.city}" placeholder="Berlin" 
+                                        <input type="text" value="${dest.city || ''}" placeholder="Berlin" 
                                                style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);"
-                                               oninput="tripData.destinations['${type}'][${idx}].city = this.value"
+                                               oninput="if(tripData.destinations['${type}'][${idx}]) tripData.destinations['${type}'][${idx}].city = this.value"
                                                onblur="saveDataSync(); renderDestinations(); updateOverviewSummary()">
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Place Name</label>
                                         <input type="text" value="${dest.placeName || ''}" placeholder="Brandenburg Gate" 
                                                style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);"
-                                               oninput="tripData.destinations['${type}'][${idx}].placeName = this.value"
+                                               oninput="if(tripData.destinations['${type}'][${idx}]) tripData.destinations['${type}'][${idx}].placeName = this.value"
                                                onblur="saveDataSync()">
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Google Maps Link</label>
                                         <input type="text" value="${dest.mapsLink || ''}" placeholder="Paste URL" 
                                                style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);"
-                                               oninput="tripData.destinations['${type}'][${idx}].mapsLink = this.value"
+                                               oninput="if(tripData.destinations['${type}'][${idx}]) tripData.destinations['${type}'][${idx}].mapsLink = this.value"
                                                onblur="saveDataSync()">
                                     </div>
                                 </div>

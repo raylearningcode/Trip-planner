@@ -128,13 +128,11 @@
         </form>
         <div class="divider">or</div>
         <div class="alt-action">
-            Already have an account? <a href="index.html">Sign in</a>
+            Already have an account? <a href="login.html">Sign in</a>
         </div>
     </div>
     <script>
-        const SUPABASE_URL = 'https://xwoxevuziypkcuplazdu.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3b3hldnV6aXlwa2N1cGxhemR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDUyNDUsImV4cCI6MjA5NDY4MTI0NX0.RTxipT-aTh_dxiOS72onfVfGEUlMOTNfLyOHy_ifWqw';
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const sb = supabase.createClient('https://xwoxevuziypkcuplazdu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3b3hldnV6aXlwa2N1cGxhemR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDUyNDUsImV4cCI6MjA5NDY4MTI0NX0.RTxipT-aTh_dxiOS72onfVfGEUlMOTNfLyOHy_ifWqw');
         
         document.getElementById('form').addEventListener('submit', async (e) => {
             e.preventDefault();

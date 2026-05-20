@@ -2043,7 +2043,7 @@
         }
         
         async function saveData() {
-            isLocalUpdate = true; // Mark that WE are updating (don't reload our own changes)
+            isLocalUpdate = true;
             
             tripData.overview = {
                 destination: document.getElementById('destination').value,
@@ -2051,66 +2051,89 @@
                 returnDate: document.getElementById('returnDate').value
             };
             
-            // Save PERSONAL data to trip_data (per user) - Always visible to members
-            const personalTypes = ['budget', 'savings', 'logistics', 'packing']; // REMOVED 'bookings'
-            for (const type of personalTypes) {
-                await sb.from('trip_data').upsert({
-                    trip_id: currentTrip,
-                    user_id: user.id,
-                    data_type: type,
-                    data: tripData[type] || [],
-                    visibility: 'members' // Public to all trip members
-                }, { onConflict: 'trip_id,user_id,data_type' });
+            try {
+                // Batch all saves together
+                const personalTypes = ['budget', 'savings', 'logistics', 'packing'];
+                const savePromises = [];
+                
+                // Personal data saves
+                for (const type of personalTypes) {
+                    savePromises.push(
+                        sb.from('trip_data').upsert({
+                            trip_id: currentTrip,
+                            user_id: user.id,
+                            data_type: type,
+                            data: tripData[type] || [],
+                            visibility: 'members'
+                        }, { onConflict: 'trip_id,user_id,data_type' })
+                    );
+                }
+                
+                // Shared data saves
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'group',
+                        data: tripData.group || [],
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'destinations',
+                        data: tripData.destinations || { main: [], optional: [], other: [], restaurants: [] },
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'itinerary',
+                        data: tripData.dayPlans || [],
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'shared_expenses',
+                        data: tripData.sharedExpenses || [],
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'bookings',
+                        data: tripData.bookings || [],
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                savePromises.push(
+                    sb.from('trips').update({
+                        destination: tripData.overview.destination,
+                        departure_date: tripData.overview.departureDate,
+                        return_date: tripData.overview.returnDate
+                    }).eq('id', currentTrip)
+                );
+                
+                // Execute all saves in parallel
+                await Promise.all(savePromises);
+                
+            } catch (err) {
+                console.error('Save error:', err);
             }
             
-            // Save SHARED data to shared_trip_data (all members see same)
-            await sb.from('shared_trip_data').upsert({
-                trip_id: currentTrip,
-                data_type: 'group',
-                data: tripData.group || [],
-                last_edited_by: user.id
-            }, { onConflict: 'trip_id,data_type' });
-            
-            await sb.from('shared_trip_data').upsert({
-                trip_id: currentTrip,
-                data_type: 'destinations',
-                data: tripData.destinations || { main: [], optional: [], other: [], restaurants: [] },
-                last_edited_by: user.id
-            }, { onConflict: 'trip_id,data_type' });
-            
-            await sb.from('shared_trip_data').upsert({
-                trip_id: currentTrip,
-                data_type: 'itinerary',
-                data: tripData.dayPlans || [],
-                last_edited_by: user.id
-            }, { onConflict: 'trip_id,data_type' });
-            
-            await sb.from('shared_trip_data').upsert({
-                trip_id: currentTrip,
-                data_type: 'shared_expenses',
-                data: tripData.sharedExpenses || [],
-                last_edited_by: user.id
-            }, { onConflict: 'trip_id,data_type' });
-            
-            // BOOKINGS NOW SHARED - Save to shared_trip_data
-            await sb.from('shared_trip_data').upsert({
-                trip_id: currentTrip,
-                data_type: 'bookings',
-                data: tripData.bookings || [],
-                last_edited_by: user.id
-            }, { onConflict: 'trip_id,data_type' });
-            
-            // Also update trips table
-            await sb.from('trips').update({
-                destination: tripData.overview.destination,
-                departure_date: tripData.overview.departureDate,
-                return_date: tripData.overview.returnDate
-            }).eq('id', currentTrip);
-            
-            // Reset flag after 500ms (enough time for realtime to arrive)
+            // Extended timeout - all realtime events arrive within 1.5s
             setTimeout(() => {
                 isLocalUpdate = false;
-            }, 500);
+            }, 1500);
         }
 
         // REAL-TIME SUBSCRIPTIONS
@@ -2220,7 +2243,7 @@
                 document.getElementById(currentPage).classList.add('active');
                 
                 console.log('✅ Data reloaded, staying on page:', currentPage);
-            }, 300); // 300ms debounce
+            }, 800); // 800ms debounce - wait for multiple changes
         }
         
         function showLiveUpdateIndicator() {

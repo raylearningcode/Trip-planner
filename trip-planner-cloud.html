@@ -4969,24 +4969,193 @@
             saveData();
         }
 
+        // ITINERARY CONFLICT DETECTION
+        function detectItineraryConflicts() {
+            const conflicts = [];
+            
+            tripData.dayPlans.forEach((day, dayIdx) => {
+                const activities = day.activities || [];
+                
+                // Check each activity
+                activities.forEach((act, actIdx) => {
+                    if (!act.timeStart || !act.timeEnd) return;
+                    
+                    const startMinutes = timeToMinutes(act.timeStart);
+                    const endMinutes = timeToMinutes(act.timeEnd);
+                    
+                    // Conflict 1: End time before start time
+                    if (endMinutes <= startMinutes) {
+                        conflicts.push({
+                            dayIdx,
+                            actIdx,
+                            type: 'invalid_time',
+                            severity: 'high',
+                            message: `${act.activity || 'Activity'}: End time (${act.timeEnd}) is before/same as start time (${act.timeStart})`
+                        });
+                    }
+                    
+                    // Conflict 2: Overlapping with next activity
+                    if (actIdx < activities.length - 1) {
+                        const nextAct = activities[actIdx + 1];
+                        if (nextAct.timeStart) {
+                            const nextStartMinutes = timeToMinutes(nextAct.timeStart);
+                            const gap = nextStartMinutes - endMinutes;
+                            
+                            // Overlap
+                            if (gap < 0) {
+                                conflicts.push({
+                                    dayIdx,
+                                    actIdx,
+                                    type: 'overlap',
+                                    severity: 'high',
+                                    message: `${act.activity || 'Activity'} overlaps with ${nextAct.activity || 'next activity'} by ${Math.abs(gap)} minutes`
+                                });
+                            }
+                            // No gap between activities (might need travel time)
+                            else if (gap === 0 && act.location && nextAct.location && act.location !== nextAct.location) {
+                                conflicts.push({
+                                    dayIdx,
+                                    actIdx,
+                                    type: 'no_travel_time',
+                                    severity: 'medium',
+                                    message: `No travel time between "${act.location}" and "${nextAct.location}"`
+                                });
+                            }
+                            // Very tight gap (< 15 min between different locations)
+                            else if (gap < 15 && act.location && nextAct.location && act.location !== nextAct.location) {
+                                conflicts.push({
+                                    dayIdx,
+                                    actIdx,
+                                    type: 'tight_schedule',
+                                    severity: 'low',
+                                    message: `Only ${gap} minutes between activities at different locations`
+                                });
+                            }
+                        }
+                    }
+                    
+                    // Conflict 3: Very long activity (>6 hours)
+                    const duration = endMinutes - startMinutes;
+                    if (duration > 360 && act.type !== 'Rest') {
+                        conflicts.push({
+                            dayIdx,
+                            actIdx,
+                            type: 'long_activity',
+                            severity: 'low',
+                            message: `${act.activity || 'Activity'} is ${Math.floor(duration/60)}h ${duration%60}m long - might be too ambitious`
+                        });
+                    }
+                    
+                    // Conflict 4: Activities starting too early or too late
+                    if (startMinutes < 360) { // Before 6am
+                        conflicts.push({
+                            dayIdx,
+                            actIdx,
+                            type: 'early_start',
+                            severity: 'low',
+                            message: `${act.activity || 'Activity'} starts at ${act.timeStart} - very early morning`
+                        });
+                    }
+                    if (endMinutes > 1380) { // After 11pm
+                        conflicts.push({
+                            dayIdx,
+                            actIdx,
+                            type: 'late_end',
+                            severity: 'low',
+                            message: `${act.activity || 'Activity'} ends at ${act.timeEnd} - very late night`
+                        });
+                    }
+                });
+                
+                // Conflict 5: Check against bookings
+                if (tripData.bookings) {
+                    tripData.bookings.forEach(booking => {
+                        if (!booking.datetime || booking.status === 'Cancelled') return;
+                        
+                        const bookingDate = booking.datetime.split('T')[0];
+                        if (bookingDate !== day.date) return;
+                        
+                        const bookingTime = booking.datetime.split('T')[1]?.substring(0, 5);
+                        if (!bookingTime) return;
+                        
+                        const bookingMinutes = timeToMinutes(bookingTime);
+                        
+                        // Check if any activity overlaps with booking
+                        activities.forEach((act, actIdx) => {
+                            if (!act.timeStart || !act.timeEnd) return;
+                            const actStart = timeToMinutes(act.timeStart);
+                            const actEnd = timeToMinutes(act.timeEnd);
+                            
+                            if (bookingMinutes >= actStart && bookingMinutes < actEnd) {
+                                conflicts.push({
+                                    dayIdx,
+                                    actIdx,
+                                    type: 'booking_conflict',
+                                    severity: 'high',
+                                    message: `${booking.type} booking "${booking.name}" at ${bookingTime} conflicts with ${act.activity || 'activity'}`
+                                });
+                            }
+                        });
+                    });
+                }
+            });
+            
+            return conflicts;
+        }
+
+        function timeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function minutesToTime(minutes) {
+            const h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
         function renderDayPlans() {
             const container = document.getElementById('dayPlansContainer');
             container.innerHTML = '';
+            
+            // Detect conflicts first
+            const conflicts = detectItineraryConflicts();
 
             tripData.dayPlans.forEach((plan, idx) => {
+                const dayConflicts = conflicts.filter(c => c.dayIdx === idx);
+                
                 const div = document.createElement('div');
+                div.setAttribute('data-day-idx', idx);
                 div.style.cssText = 'background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 16px; padding: 16px;';
                 div.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                         <h4 style="color: var(--secondary);">Day ${plan.day} - ${plan.city || 'No city'}</h4>
                         <button class="btn btn-danger btn-sm" onclick="deleteDayPlan(${idx}, this)">Delete</button>
                     </div>
+                    
+                    ${dayConflicts.length > 0 ? `
+                        <div style="background: ${dayConflicts.some(c => c.severity === 'high') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; 
+                                    border: 1px solid ${dayConflicts.some(c => c.severity === 'high') ? 'var(--danger)' : 'var(--warning)'}; 
+                                    border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                            <div style="font-weight: 600; margin-bottom: 8px; color: ${dayConflicts.some(c => c.severity === 'high') ? 'var(--danger)' : 'var(--warning)'};">
+                                ⚠️ ${dayConflicts.length} Issue${dayConflicts.length > 1 ? 's' : ''} Detected
+                            </div>
+                            ${dayConflicts.slice(0, 3).map(c => `
+                                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">
+                                    • ${c.message}
+                                </div>
+                            `).join('')}
+                            ${dayConflicts.length > 3 ? `<div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">+${dayConflicts.length - 3} more issues</div>` : ''}
+                        </div>
+                    ` : ''}
+                    
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
                         <div>
                             <label style="font-size: 12px; color: var(--text-secondary);">Date</label>
                             <input type="date" value="${plan.date}" 
                                    style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);"
-                                   onchange="tripData.dayPlans[${idx}].date = this.value; saveDataSync()">
+                                   onchange="tripData.dayPlans[${idx}].date = this.value; saveDataSync(); renderDayPlans()">
                         </div>
                         <div>
                             <label style="font-size: 12px; color: var(--text-secondary);">City</label>
@@ -5004,16 +5173,27 @@
 
                 const activitiesDiv = div.querySelector(`#activities${idx}`);
                 plan.activities.forEach((act, actIdx) => {
+                    const actConflicts = dayConflicts.filter(c => c.actIdx === actIdx);
+                    const hasConflict = actConflicts.length > 0;
+                    const highSeverity = actConflicts.some(c => c.severity === 'high');
+                    
                     const actDiv = document.createElement('div');
-                    actDiv.style.cssText = 'background: var(--bg-main); padding: 12px; border-radius: 6px; margin-bottom: 8px; border: 1px solid var(--border);';
+                    actDiv.style.cssText = `background: var(--bg-main); padding: 12px; border-radius: 6px; margin-bottom: 8px; 
+                                            border: 1px solid ${hasConflict ? (highSeverity ? 'var(--danger)' : 'var(--warning)') : 'var(--border)'};`;
                     actDiv.innerHTML = `
+                        ${hasConflict ? `
+                            <div style="background: ${highSeverity ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; 
+                                        padding: 8px; border-radius: 6px; margin-bottom: 8px; font-size: 12px;">
+                                ${actConflicts.map(c => `<div style="color: ${c.severity === 'high' ? 'var(--danger)' : 'var(--warning)'};">⚠️ ${c.message}</div>`).join('')}
+                            </div>
+                        ` : ''}
                         <div style="display: grid; grid-template-columns: 80px 80px 1fr 100px auto; gap: 8px; align-items: center;">
                             <input type="text" value="${act.timeStart}" placeholder="09:00" 
                                    style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);"
-                                   onchange="tripData.dayPlans[${idx}].activities[${actIdx}].timeStart = this.value; saveDataSync()">
+                                   onchange="tripData.dayPlans[${idx}].activities[${actIdx}].timeStart = this.value; saveDataSync(); renderDayPlans()">
                             <input type="text" value="${act.timeEnd}" placeholder="10:00" 
                                    style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);"
-                                   onchange="tripData.dayPlans[${idx}].activities[${actIdx}].timeEnd = this.value; saveDataSync()">
+                                   onchange="tripData.dayPlans[${idx}].activities[${actIdx}].timeEnd = this.value; saveDataSync(); renderDayPlans()">
                             <input type="text" value="${act.activity}" placeholder="Activity..." 
                                    style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);"
                                    onchange="tripData.dayPlans[${idx}].activities[${actIdx}].activity = this.value; saveDataSync()">
@@ -5023,6 +5203,14 @@
                                     `<option ${act.type === t ? 'selected' : ''}>${t}</option>`).join('')}
                             </select>
                             <button class="btn btn-danger btn-sm" onclick="deleteActivity(${idx}, ${actIdx}, this)">✕</button>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                            <input type="text" value="${act.location || ''}" placeholder="Location" 
+                                   style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 12px;"
+                                   onchange="tripData.dayPlans[${idx}].activities[${actIdx}].location = this.value; saveDataSync(); renderDayPlans()">
+                            <input type="text" value="${act.notes || ''}" placeholder="Notes" 
+                                   style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 12px;"
+                                   onchange="tripData.dayPlans[${idx}].activities[${actIdx}].notes = this.value; saveDataSync()">
                         </div>
                     `;
                     activitiesDiv.appendChild(actDiv);

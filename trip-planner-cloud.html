@@ -787,13 +787,13 @@
             cursor: pointer;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            width: 48px;
-            height: 48px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 18px;
             transition: all 0.3s;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
@@ -809,17 +809,17 @@
             right: -4px;
             background: var(--danger);
             color: white;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
-            padding: 2px 6px;
+            padding: 2px 5px;
             border-radius: 10px;
-            min-width: 18px;
+            min-width: 16px;
             text-align: center;
         }
 
         .notification-panel {
             position: fixed;
-            top: 80px;
+            top: 70px;
             right: 20px;
             width: 400px;
             max-height: 500px;
@@ -918,8 +918,8 @@
             position: fixed;
             bottom: 24px;
             right: 24px;
-            width: 64px;
-            height: 64px;
+            width: 56px;
+            height: 56px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             display: flex;
@@ -938,7 +938,7 @@
         
         .quick-actions-menu {
             position: fixed;
-            bottom: 100px;
+            bottom: 90px;
             right: 24px;
             width: 280px;
             background: var(--bg-card);
@@ -2247,35 +2247,35 @@
         }
         
         function showLiveUpdateIndicator() {
-            // Show brief indicator that data is syncing
             let indicator = document.getElementById('liveIndicator');
             if (!indicator) {
                 indicator = document.createElement('div');
                 indicator.id = 'liveIndicator';
                 indicator.style.cssText = `
                     position: fixed;
-                    top: 20px;
-                    right: 20px;
+                    bottom: 100px;
+                    left: 20px;
                     background: linear-gradient(135deg, var(--success) 0%, var(--primary) 100%);
                     color: white;
-                    padding: 12px 20px;
-                    border-radius: 12px;
+                    padding: 8px 16px;
+                    border-radius: 8px;
                     font-weight: 600;
-                    font-size: 14px;
+                    font-size: 12px;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    z-index: 10000;
-                    animation: slideIn 0.3s ease;
+                    z-index: 999;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
                 `;
-                indicator.innerHTML = '🔴 Live Update';
+                indicator.innerHTML = '🟢 Synced';
                 document.body.appendChild(indicator);
             }
             
-            indicator.style.display = 'block';
+            indicator.style.opacity = '1';
             
-            // Hide after 2 seconds
+            // Hide after 1.5 seconds
             setTimeout(() => {
-                indicator.style.display = 'none';
-            }, 2000);
+                indicator.style.opacity = '0';
+            }, 1500);
         }
         
         // QUICK ACTIONS
@@ -2444,8 +2444,9 @@
             const banner = document.getElementById('viewingBanner');
             if (banner) banner.remove();
             
-            // Reset margin
-            document.querySelector('.container').style.marginTop = '0';
+            // Reset margin - check if container exists
+            const container = document.querySelector('.container');
+            if (container) container.style.marginTop = '0';
             
             // Re-render own data
             renderAll();
@@ -3408,11 +3409,19 @@
                                 <div class="member-avatar">${initials}</div>
                                 <div class="member-name">
                                     ${member.name || 'Unnamed'}
-                                    ${isOwner ? '<span style="margin-left: 8px; padding: 2px 8px; background: var(--primary); color: white; border-radius: 4px; font-size: 10px; font-weight: 700;">OWNER</span>' : ''}
+                                    ${isOwner ? '<span style="margin-left: 8px; padding: 4px 10px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;">👑 OWNER</span>' : ''}
                                 </div>
                                 ${member.email ? `<div class="member-email">${member.email}</div>` : ''}
                             </div>
-                            <span class="member-status ${statusClass}">${statusText}</span>
+                            <span class="member-status ${statusClass}" style="
+                                padding: 6px 14px; 
+                                border-radius: 20px; 
+                                font-size: 12px; 
+                                font-weight: 700;
+                                ${member.confirmed 
+                                    ? 'background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.25)); color: var(--success); border: 2px solid var(--success);' 
+                                    : 'background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.25)); color: #f59e0b; border: 2px solid #f59e0b;'}
+                            ">${statusText}</span>
                         </div>
                         
                         <div style="margin-top: 16px; background: var(--bg-main); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">
@@ -3434,24 +3443,24 @@
                             ` : ''}
                         </div>
                         
-                        <div style="display: flex; gap: 8px; margin-top: 16px;">
+                        <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
                             ${member.user_id && member.user_id !== user.id ? `
                                 <button class="btn btn-primary btn-sm" style="flex: 1;" onclick="viewMemberData('${member.user_id}')">
-                                    👁️ View Their Data
+                                    👁️ View Data
                                 </button>
                             ` : ''}
-                            <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="toggleMemberConfirm(${idx})">
-                                ${member.confirmed ? '✗ Unconfirm' : '✓ Confirm'}
+                            <button class="btn ${member.confirmed ? 'btn-secondary' : 'btn-success'} btn-sm" style="flex: 1; ${member.confirmed ? '' : 'background: linear-gradient(135deg, var(--success), #059669); border: none;'}" onclick="toggleMemberConfirm(${idx})">
+                                ${member.confirmed ? '✗ Unconfirm' : '✓ Confirm Attendance'}
                             </button>
                             ${!isOwner ? `
-                                <button class="btn btn-primary btn-sm" onclick="sendReminder('${member.user_id}', '${member.name}')" title="Send a reminder notification">
+                                <button class="btn btn-primary btn-sm" onclick="sendReminder('${member.user_id}', '${member.name}')" title="Send reminder">
                                     ⏰
                                 </button>
                             ` : ''}
                             ${!isOwner && currentUserIsOwner ? `
                                 <button class="btn btn-danger btn-sm" onclick="removeMember(${idx})">
                                     🗑️
-                                </button>
+                                </button>`
                             ` : ''}
                         </div>
                     </div>

@@ -1082,6 +1082,19 @@
             -moz-appearance: textfield;
             appearance: textfield;
         }
+        
+        /* Readonly/View-only mode styles */
+        input[readonly], select[disabled], textarea[readonly], button[disabled] {
+            background: rgba(20, 20, 32, 0.5) !important;
+            border-color: rgba(30, 41, 59, 0.5) !important;
+            color: var(--text-secondary) !important;
+            cursor: not-allowed !important;
+            opacity: 0.7 !important;
+        }
+        
+        input[readonly]:hover, select[disabled]:hover, textarea[readonly]:hover {
+            transform: none !important;
+        }
     </style>
 </head>
 <body>
@@ -2501,6 +2514,18 @@
                 renderAll();
                 updateAllStats();
                 
+                // Make everything readonly (view-only mode)
+                setTimeout(() => {
+                    document.querySelectorAll('input, textarea').forEach(el => {
+                        el.setAttribute('readonly', 'readonly');
+                    });
+                    document.querySelectorAll('select, button').forEach(el => {
+                        if (!el.onclick?.toString().includes('exitMemberView')) {
+                            el.setAttribute('disabled', 'disabled');
+                        }
+                    });
+                }, 100);
+                
                 // Show empty state if no data
                 if (!memberData || memberData.length === 0) {
                     showSuccessToast(`${viewingMemberName} hasn't added any personal data yet`);
@@ -2531,6 +2556,17 @@
             const mainContent = document.querySelector('.main-content');
             if (sidebar) sidebar.style.marginTop = '0';
             if (mainContent) mainContent.style.marginTop = '0';
+            
+            // Remove readonly/disabled attributes
+            document.querySelectorAll('input, textarea').forEach(el => {
+                el.removeAttribute('readonly');
+            });
+            document.querySelectorAll('select, button').forEach(el => {
+                el.removeAttribute('disabled');
+            });
+            
+            // Restore scroll
+            document.body.style.overflow = 'auto';
             
             // Re-render own data
             renderAll();

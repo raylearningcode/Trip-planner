@@ -54,7 +54,7 @@
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
-            --bg-main: #0f0f23;
+            --bg-main: #0a0a1e;
             --bg-card: #1a1a2e;
             --bg-hover: #242438;
             --text-primary: #f8fafc;
@@ -64,6 +64,8 @@
             --radius-sm: 8px;
             --radius-md: 12px;
             --radius-lg: 16px;
+            --glass-bg: rgba(26, 26, 46, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -213,17 +215,19 @@
 
         /* Cards */
         .card {
-            background: var(--bg-card);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: var(--radius-lg);
             padding: 24px;
             margin-bottom: 24px;
-            border: 1px solid var(--border);
+            border: 1px solid var(--glass-border);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         .card:hover {
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15), 0 10px 20px rgba(0, 0, 0, 0.2);
             transform: translateY(-2px);
             border-color: rgba(99, 102, 241, 0.3);
         }
@@ -1981,8 +1985,30 @@
         <!-- Itinerary Page -->
         <div class="page" id="itinerary">
             <div class="page-header">
-                <h1 class="page-title">Daily Itinerary</h1>
-                <p class="page-subtitle">Day-by-day plan</p>
+                <h1 class="page-title">✈️ Daily Itinerary</h1>
+                <p class="page-subtitle">Your journey, day by day</p>
+            </div>
+
+            <!-- Itinerary Stats Overview -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2)); 
+                            backdrop-filter: blur(20px); padding: 20px; border-radius: var(--radius-lg); 
+                            border: 1px solid var(--glass-border); text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: var(--primary);" id="totalDaysCount">0</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Total Days</div>
+                </div>
+                <div style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(239, 68, 68, 0.2)); 
+                            backdrop-filter: blur(20px); padding: 20px; border-radius: var(--radius-lg); 
+                            border: 1px solid var(--glass-border); text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: var(--secondary);" id="totalActivitiesCount">0</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Activities</div>
+                </div>
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); 
+                            backdrop-filter: blur(20px); padding: 20px; border-radius: var(--radius-lg); 
+                            border: 1px solid var(--glass-border); text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: var(--success);" id="conflictsCount">0</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Conflicts</div>
+                </div>
             </div>
 
             <div class="card">
@@ -5121,53 +5147,106 @@
             
             // Detect conflicts first
             const conflicts = detectItineraryConflicts();
+            
+            // Update stats
+            const totalDays = tripData.dayPlans.length;
+            const totalActivities = tripData.dayPlans.reduce((sum, day) => sum + (day.activities?.length || 0), 0);
+            document.getElementById('totalDaysCount').textContent = totalDays;
+            document.getElementById('totalActivitiesCount').textContent = totalActivities;
+            document.getElementById('conflictsCount').textContent = conflicts.length;
+            document.getElementById('conflictsCount').style.color = conflicts.length > 0 ? 'var(--danger)' : 'var(--success)';
 
             tripData.dayPlans.forEach((plan, idx) => {
                 const dayConflicts = conflicts.filter(c => c.dayIdx === idx);
+                const totalMinutes = (plan.activities || []).reduce((sum, act) => {
+                    if (!act.timeStart || !act.timeEnd) return sum;
+                    return sum + (timeToMinutes(act.timeEnd) - timeToMinutes(act.timeStart));
+                }, 0);
+                const hours = Math.floor(totalMinutes / 60);
+                const mins = totalMinutes % 60;
                 
                 const div = document.createElement('div');
                 div.setAttribute('data-day-idx', idx);
-                div.style.cssText = 'background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 16px; padding: 16px;';
+                div.style.cssText = `
+                    background: var(--glass-bg);
+                    backdrop-filter: blur(20px);
+                    border: 1px solid var(--glass-border);
+                    border-radius: var(--radius-lg);
+                    margin-bottom: 20px;
+                    padding: 24px;
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    transition: all 0.3s;
+                `;
+                
                 div.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="color: var(--secondary);">Day ${plan.day} - ${plan.city || 'No city'}</h4>
-                        <button class="btn btn-danger btn-sm" onclick="deleteDayPlan(${idx}, this)">Delete</button>
+                    <!-- Day number badge -->
+                    <div style="position: absolute; top: 16px; right: 16px; width: 60px; height: 60px; 
+                                background: linear-gradient(135deg, var(--primary), var(--secondary)); 
+                                border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);">
+                        <span style="font-size: 24px; font-weight: 700; color: white;">${plan.day}</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-right: 80px;">
+                        <div>
+                            <h3 style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">
+                                ${plan.city || 'Unnamed City'}
+                            </h3>
+                            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                                <span style="font-size: 14px; color: var(--text-secondary);">📅 ${plan.date || 'No date'}</span>
+                                <span style="font-size: 14px; color: var(--text-secondary);">⏱️ ${hours}h ${mins}m planned</span>
+                                <span style="font-size: 14px; color: var(--text-secondary);">📍 ${plan.activities?.length || 0} stops</span>
+                            </div>
+                        </div>
                     </div>
                     
                     ${dayConflicts.length > 0 ? `
-                        <div style="background: ${dayConflicts.some(c => c.severity === 'high') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; 
-                                    border: 1px solid ${dayConflicts.some(c => c.severity === 'high') ? 'var(--danger)' : 'var(--warning)'}; 
-                                    border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: ${dayConflicts.some(c => c.severity === 'high') ? 'var(--danger)' : 'var(--warning)'};">
-                                ⚠️ ${dayConflicts.length} Issue${dayConflicts.length > 1 ? 's' : ''} Detected
+                        <div style="background: ${dayConflicts.some(c => c.severity === 'high') ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)'}; 
+                                    border-left: 4px solid ${dayConflicts.some(c => c.severity === 'high') ? 'var(--danger)' : 'var(--warning)'}; 
+                                    border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                            <div style="font-weight: 600; margin-bottom: 12px; color: ${dayConflicts.some(c => c.severity === 'high') ? 'var(--danger)' : 'var(--warning)'}; font-size: 15px;">
+                                ⚠️ ${dayConflicts.length} Scheduling Issue${dayConflicts.length > 1 ? 's' : ''} Detected
                             </div>
                             ${dayConflicts.slice(0, 3).map(c => `
-                                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">
-                                    • ${c.message}
+                                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; padding-left: 20px; position: relative;">
+                                    <span style="position: absolute; left: 0;">•</span>
+                                    ${c.message}
                                 </div>
                             `).join('')}
-                            ${dayConflicts.length > 3 ? `<div style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">+${dayConflicts.length - 3} more issues</div>` : ''}
+                            ${dayConflicts.length > 3 ? `<div style="font-size: 12px; color: var(--text-tertiary); margin-top: 8px; padding-left: 20px;">+${dayConflicts.length - 3} more</div>` : ''}
                         </div>
                     ` : ''}
                     
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 20px;">
                         <div>
-                            <label style="font-size: 12px; color: var(--text-secondary);">Date</label>
+                            <label style="font-size: 12px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block;">Date</label>
                             <input type="date" value="${plan.date}" 
-                                   style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);"
+                                   style="width: 100%; padding: 12px; background: rgba(15, 15, 35, 0.6); border: 1px solid var(--border); 
+                                          border-radius: 8px; color: var(--text-primary); font-size: 14px;"
                                    onchange="tripData.dayPlans[${idx}].date = this.value; saveDataSync(); renderDayPlans()">
                         </div>
                         <div>
-                            <label style="font-size: 12px; color: var(--text-secondary);">City</label>
+                            <label style="font-size: 12px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block;">City</label>
                             <input type="text" value="${plan.city}" 
-                                   style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);"
+                                   style="width: 100%; padding: 12px; background: rgba(15, 15, 35, 0.6); border: 1px solid var(--border); 
+                                          border-radius: 8px; color: var(--text-primary); font-size: 14px;"
                                    onchange="tripData.dayPlans[${idx}].city = this.value; saveDataSync(); renderDayPlans(); updateOverviewSummary()">
                         </div>
                     </div>
-                    <div>
-                        <button class="btn btn-success btn-sm" onclick="addActivity(${idx})">+ Add Activity</button>
+                    
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <button class="btn btn-success btn-sm" onclick="addActivity(${idx})" style="flex: 1;">+ Add Activity</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteDayPlan(${idx}, this)">🗑️ Delete Day</button>
                     </div>
-                    <div id="activities${idx}" style="margin-top: 12px;"></div>
+                    
+                    <!-- Timeline connector -->
+                    <div style="position: relative; padding-left: 32px;">
+                        <div style="position: absolute; left: 12px; top: 0; bottom: 0; width: 2px; 
+                                    background: linear-gradient(180deg, var(--primary) 0%, var(--secondary) 100%);"></div>
+                        <div id="activities${idx}"></div>
+                    </div>
                 `;
                 container.appendChild(div);
 
@@ -5178,39 +5257,85 @@
                     const highSeverity = actConflicts.some(c => c.severity === 'high');
                     
                     const actDiv = document.createElement('div');
-                    actDiv.style.cssText = `background: var(--bg-main); padding: 12px; border-radius: 6px; margin-bottom: 8px; 
-                                            border: 1px solid ${hasConflict ? (highSeverity ? 'var(--danger)' : 'var(--warning)') : 'var(--border)'};`;
+                    actDiv.style.cssText = `
+                        background: rgba(15, 15, 35, 0.8);
+                        backdrop-filter: blur(10px);
+                        padding: 16px;
+                        border-radius: 12px;
+                        margin-bottom: 16px;
+                        border: 1px solid ${hasConflict ? (highSeverity ? 'var(--danger)' : 'var(--warning)') : 'var(--border)'};
+                        position: relative;
+                        transition: all 0.2s;
+                    `;
+                    
+                    // Activity type emoji
+                    const typeEmoji = {
+                        'Activity': '🎯',
+                        'Food': '🍽️',
+                        'Transport': '🚗',
+                        'Rest': '😴',
+                        'Shopping': '🛍️'
+                    }[act.type] || '📌';
+                    
                     actDiv.innerHTML = `
+                        <!-- Timeline dot -->
+                        <div style="position: absolute; left: -28px; top: 24px; width: 16px; height: 16px; 
+                                    background: linear-gradient(135deg, var(--primary), var(--secondary)); 
+                                    border-radius: 50%; border: 3px solid var(--bg-main);
+                                    box-shadow: 0 0 0 2px var(--border);"></div>
+                        
                         ${hasConflict ? `
                             <div style="background: ${highSeverity ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; 
-                                        padding: 8px; border-radius: 6px; margin-bottom: 8px; font-size: 12px;">
-                                ${actConflicts.map(c => `<div style="color: ${c.severity === 'high' ? 'var(--danger)' : 'var(--warning)'};">⚠️ ${c.message}</div>`).join('')}
+                                        padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px;
+                                        border-left: 3px solid ${highSeverity ? 'var(--danger)' : 'var(--warning)'}";">
+                                ${actConflicts.map(c => `<div style="color: ${c.severity === 'high' ? 'var(--danger)' : 'var(--warning)'}; margin-bottom: 4px;">⚠️ ${c.message}</div>`).join('')}
                             </div>
                         ` : ''}
-                        <div style="display: grid; grid-template-columns: 80px 80px 1fr 100px auto; gap: 8px; align-items: center;">
+                        
+                        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                            <span style="font-size: 28px;">${typeEmoji}</span>
+                            <div style="flex: 1;">
+                                <input type="text" value="${act.activity || ''}" placeholder="What are you doing?" 
+                                       style="width: 100%; padding: 10px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); 
+                                              border-radius: 8px; color: var(--text-primary); font-size: 15px; font-weight: 500;"
+                                       onchange="tripData.dayPlans[${idx}].activities[${actIdx}].activity = this.value; saveDataSync()">
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 90px 90px 1fr auto; gap: 12px; align-items: center; margin-bottom: 12px;">
                             <input type="text" value="${act.timeStart}" placeholder="09:00" 
-                                   style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);"
+                                   style="padding: 10px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); 
+                                          border-radius: 8px; color: var(--text-primary); text-align: center; font-weight: 600;"
                                    onchange="tripData.dayPlans[${idx}].activities[${actIdx}].timeStart = this.value; saveDataSync(); renderDayPlans()">
                             <input type="text" value="${act.timeEnd}" placeholder="10:00" 
-                                   style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);"
+                                   style="padding: 10px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); 
+                                          border-radius: 8px; color: var(--text-primary); text-align: center; font-weight: 600;"
                                    onchange="tripData.dayPlans[${idx}].activities[${actIdx}].timeEnd = this.value; saveDataSync(); renderDayPlans()">
-                            <input type="text" value="${act.activity}" placeholder="Activity..." 
-                                   style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);"
-                                   onchange="tripData.dayPlans[${idx}].activities[${actIdx}].activity = this.value; saveDataSync()">
-                            <select style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);"
-                                    onchange="tripData.dayPlans[${idx}].activities[${actIdx}].type = this.value; saveDataSync()">
+                            <select style="padding: 10px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); 
+                                           border-radius: 8px; color: var(--text-primary);"
+                                    onchange="tripData.dayPlans[${idx}].activities[${actIdx}].type = this.value; saveDataSync(); renderDayPlans()">
                                 ${['Activity', 'Food', 'Transport', 'Rest', 'Shopping'].map(t => 
                                     `<option ${act.type === t ? 'selected' : ''}>${t}</option>`).join('')}
                             </select>
-                            <button class="btn btn-danger btn-sm" onclick="deleteActivity(${idx}, ${actIdx}, this)">✕</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteActivity(${idx}, ${actIdx}, this)" 
+                                    style="padding: 10px 14px;">✕</button>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
-                            <input type="text" value="${act.location || ''}" placeholder="Location" 
-                                   style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 12px;"
-                                   onchange="tripData.dayPlans[${idx}].activities[${actIdx}].location = this.value; saveDataSync(); renderDayPlans()">
-                            <input type="text" value="${act.notes || ''}" placeholder="Notes" 
-                                   style="padding: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 12px;"
-                                   onchange="tripData.dayPlans[${idx}].activities[${actIdx}].notes = this.value; saveDataSync()">
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 16px;">📍</span>
+                                <input type="text" value="${act.location || ''}" placeholder="Location" 
+                                       style="flex: 1; padding: 8px 12px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); 
+                                              border-radius: 8px; color: var(--text-primary); font-size: 13px;"
+                                       onchange="tripData.dayPlans[${idx}].activities[${actIdx}].location = this.value; saveDataSync(); renderDayPlans()">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 16px;">📝</span>
+                                <input type="text" value="${act.notes || ''}" placeholder="Notes" 
+                                       style="flex: 1; padding: 8px 12px; background: rgba(26, 26, 46, 0.6); border: 1px solid var(--border); 
+                                              border-radius: 8px; color: var(--text-primary); font-size: 13px;"
+                                       onchange="tripData.dayPlans[${idx}].activities[${actIdx}].notes = this.value; saveDataSync()">
+                            </div>
                         </div>
                     `;
                     activitiesDiv.appendChild(actDiv);

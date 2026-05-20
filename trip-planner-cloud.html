@@ -2100,18 +2100,17 @@
                 last_edited_by: user.id
             }, { onConflict: 'trip_id,data_type' });
             
-            // Reset flag after 500ms (enough time for realtime to arrive)
-            setTimeout(() => {
-                isLocalUpdate = false;
-            }, 500);
-        }
-            
             // Also update trips table
             await sb.from('trips').update({
                 destination: tripData.overview.destination,
                 departure_date: tripData.overview.departureDate,
                 return_date: tripData.overview.returnDate
             }).eq('id', currentTrip);
+            
+            // Reset flag after 500ms (enough time for realtime to arrive)
+            setTimeout(() => {
+                isLocalUpdate = false;
+            }, 500);
         }
 
         // REAL-TIME SUBSCRIPTIONS

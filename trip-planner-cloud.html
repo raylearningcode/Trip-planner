@@ -573,6 +573,27 @@
             overflow: hidden;
             border: 1px solid var(--border);
         }
+        
+        .custom-marker {
+            background: transparent !important;
+            border: none !important;
+            text-align: center;
+        }
+        
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+            border-radius: 12px !important;
+            padding: 4px !important;
+        }
+        
+        .leaflet-popup-content {
+            margin: 12px !important;
+        }
+        
+        .leaflet-popup-tip {
+            background: var(--bg-card) !important;
+        }
 
         /* Page Transitions */
         .page {
@@ -2023,15 +2044,79 @@
         <!-- Map Page -->
         <div class="page" id="map">
             <div class="page-header">
-                <h1 class="page-title">Trip Map</h1>
+                <h1 class="page-title">🗺️ Trip Map</h1>
                 <p class="page-subtitle">Visualize your journey</p>
+            </div>
+
+            <!-- Map Filters & Controls -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🎯 Map Controls</div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                    <!-- Country Selector -->
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">
+                            🌍 Focus Country
+                        </label>
+                        <select id="mapCountryFilter" onchange="updateMapView()" 
+                                style="width: 100%; padding: 10px; background: var(--bg-hover); border: 1px solid var(--border); 
+                                       border-radius: 8px; color: var(--text-primary); font-size: 14px;">
+                            <option value="all">All Countries</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Search Radius -->
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">
+                            📍 Search Radius (km)
+                        </label>
+                        <input type="number" id="mapRadius" value="5" min="1" max="50" 
+                               style="width: 100%; padding: 10px; background: var(--bg-hover); border: 1px solid var(--border); 
+                                      border-radius: 8px; color: var(--text-primary); font-size: 14px;"
+                               onchange="updateMapView()">
+                    </div>
+                </div>
+                
+                <!-- Show/Hide Layers -->
+                <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                    <div style="font-size: 13px; color: var(--text-tertiary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Display Layers
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 14px; 
+                                      background: var(--bg-main); border-radius: 6px; border: 1px solid var(--border);">
+                            <input type="checkbox" id="showDestinations" checked onchange="updateMapView()" 
+                                   style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="color: var(--text-primary); font-size: 14px;">📍 Destinations</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 14px; 
+                                      background: var(--bg-main); border-radius: 6px; border: 1px solid var(--border);">
+                            <input type="checkbox" id="showRestaurants" checked onchange="updateMapView()" 
+                                   style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="color: var(--text-primary); font-size: 14px;">🍽️ Restaurants</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 14px; 
+                                      background: var(--bg-main); border-radius: 6px; border: 1px solid var(--border);">
+                            <input type="checkbox" id="showAccommodation" checked onchange="updateMapView()" 
+                                   style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="color: var(--text-primary); font-size: 14px;">🏨 Accommodation</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-primary btn-sm" onclick="refreshMap()" style="flex: 1;">🔄 Refresh Map</button>
+                    <button class="btn btn-secondary btn-sm" onclick="centerMapOnDestinations()" style="flex: 1;">🎯 Center View</button>
+                </div>
             </div>
 
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">🗺️ Interactive Map</div>
-                    <div class="card-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="refreshMap()">🔄 Refresh</button>
+                    <div id="mapStats" style="font-size: 13px; color: var(--text-secondary);">
+                        <span id="visibleMarkers">0</span> markers visible
                     </div>
                 </div>
                 <div id="tripMap"></div>
@@ -5466,19 +5551,66 @@
                 window.mapInitialized = true;
             }
             
+            // Populate country selector
+            populateCountrySelector();
+            
             // Plot destinations after map loads
-            plotDestinationsOnMap();
+            updateMapView();
+        }
+
+        function populateCountrySelector() {
+            const countries = new Set();
+            ['main', 'optional', 'other', 'restaurants'].forEach(type => {
+                (tripData.destinations[type] || []).forEach(dest => {
+                    if (dest.country) countries.add(dest.country);
+                });
+            });
+            
+            const select = document.getElementById('mapCountryFilter');
+            const currentValue = select.value;
+            select.innerHTML = '<option value="all">All Countries</option>';
+            
+            Array.from(countries).sort().forEach(country => {
+                const option = document.createElement('option');
+                option.value = country;
+                option.textContent = country;
+                select.appendChild(option);
+            });
+            
+            select.value = currentValue;
         }
 
         function refreshMap() {
             if (map) {
                 map.invalidateSize();
-                plotDestinationsOnMap();
+                populateCountrySelector();
+                updateMapView();
             }
         }
         
-        function plotDestinationsOnMap() {
+        function centerMapOnDestinations() {
             if (!map) return;
+            const markers = [];
+            
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    markers.push(layer.getLatLng());
+                }
+            });
+            
+            if (markers.length > 0) {
+                map.fitBounds(markers);
+            }
+        }
+        
+        function updateMapView() {
+            if (!map) return;
+            
+            const selectedCountry = document.getElementById('mapCountryFilter').value;
+            const radius = parseFloat(document.getElementById('mapRadius').value) || 5;
+            const showDestinations = document.getElementById('showDestinations').checked;
+            const showRestaurants = document.getElementById('showRestaurants').checked;
+            const showAccommodation = document.getElementById('showAccommodation').checked;
             
             // Clear existing markers
             map.eachLayer(layer => {
@@ -5488,30 +5620,134 @@
             });
             
             const markers = [];
+            let visibleCount = 0;
             
-            // Get all destinations
-            ['main', 'optional', 'other', 'restaurants'].forEach(type => {
-                (tripData.destinations[type] || []).forEach(dest => {
+            // Icon colors by type
+            const icons = {
+                main: '🏛️',
+                optional: '📌',
+                other: '⭐',
+                restaurants: '🍽️',
+                accommodation: '🏨'
+            };
+            
+            // Plot main/optional/other destinations
+            if (showDestinations) {
+                ['main', 'optional', 'other'].forEach(type => {
+                    (tripData.destinations[type] || []).forEach(dest => {
+                        if (selectedCountry !== 'all' && dest.country !== selectedCountry) return;
+                        
+                        if (dest.mapsLink) {
+                            const coords = extractCoordsFromMapsLink(dest.mapsLink);
+                            if (coords) {
+                                const marker = L.marker(coords, {
+                                    icon: L.divIcon({
+                                        html: `<div style="font-size: 24px;">${icons[type]}</div>`,
+                                        className: 'custom-marker',
+                                        iconSize: [30, 30]
+                                    })
+                                }).addTo(map);
+                                
+                                marker.bindPopup(`
+                                    <div style="min-width: 200px;">
+                                        <strong style="font-size: 16px; color: var(--primary);">${dest.city || 'Unknown'}</strong><br>
+                                        <div style="margin: 8px 0; color: var(--text-secondary);">${dest.placeName || ''}</div>
+                                        ${dest.highlights ? `<div style="font-size: 13px; margin: 8px 0; padding: 8px; background: rgba(99,102,241,0.1); border-radius: 4px;">${dest.highlights}</div>` : ''}
+                                        <a href="${dest.mapsLink}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>
+                                    </div>
+                                `);
+                                
+                                markers.push(coords);
+                                visibleCount++;
+                            }
+                        }
+                    });
+                });
+            }
+            
+            // Plot restaurants
+            if (showRestaurants) {
+                (tripData.destinations.restaurants || []).forEach(dest => {
+                    if (selectedCountry !== 'all' && dest.country !== selectedCountry) return;
+                    
                     if (dest.mapsLink) {
-                        // Try to extract coordinates from Google Maps link
                         const coords = extractCoordsFromMapsLink(dest.mapsLink);
                         if (coords) {
-                            const marker = L.marker(coords).addTo(map);
+                            const marker = L.marker(coords, {
+                                icon: L.divIcon({
+                                    html: `<div style="font-size: 24px;">🍽️</div>`,
+                                    className: 'custom-marker',
+                                    iconSize: [30, 30]
+                                })
+                            }).addTo(map);
+                            
                             marker.bindPopup(`
-                                <strong>${dest.city || 'Unknown'}</strong><br>
-                                ${dest.placeName || ''}<br>
-                                <a href="${dest.mapsLink}" target="_blank">Open in Maps</a>
+                                <div style="min-width: 200px;">
+                                    <strong style="font-size: 16px; color: var(--secondary);">🍽️ ${dest.placeName || dest.city || 'Restaurant'}</strong><br>
+                                    <div style="margin: 8px 0; color: var(--text-secondary);">${dest.city || ''}</div>
+                                    ${dest.highlights ? `<div style="font-size: 13px; margin: 8px 0;">${dest.highlights}</div>` : ''}
+                                    <a href="${dest.mapsLink}" target="_blank" style="color: var(--secondary); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>
+                                </div>
                             `);
+                            
                             markers.push(coords);
+                            visibleCount++;
                         }
                     }
                 });
-            });
+            }
+            
+            // Plot accommodation (from bookings)
+            if (showAccommodation && tripData.bookings) {
+                tripData.bookings.filter(b => b.type === 'Hotel' && b.confirmation).forEach(booking => {
+                    // Try to find matching destination with coords
+                    const dest = findDestinationByName(booking.name);
+                    if (dest && dest.mapsLink) {
+                        const coords = extractCoordsFromMapsLink(dest.mapsLink);
+                        if (coords) {
+                            const marker = L.marker(coords, {
+                                icon: L.divIcon({
+                                    html: `<div style="font-size: 24px;">🏨</div>`,
+                                    className: 'custom-marker',
+                                    iconSize: [30, 30]
+                                })
+                            }).addTo(map);
+                            
+                            marker.bindPopup(`
+                                <div style="min-width: 200px;">
+                                    <strong style="font-size: 16px; color: var(--success);">🏨 ${booking.name}</strong><br>
+                                    <div style="margin: 8px 0; color: var(--text-secondary);">Confirmation: ${booking.confirmation}</div>
+                                    <div style="font-size: 13px; margin: 4px 0;">Check-in: ${booking.datetime?.split('T')[0] || 'TBD'}</div>
+                                    ${dest.mapsLink ? `<a href="${dest.mapsLink}" target="_blank" style="color: var(--success); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>` : ''}
+                                </div>
+                            `);
+                            
+                            markers.push(coords);
+                            visibleCount++;
+                        }
+                    }
+                });
+            }
+            
+            // Update stats
+            document.getElementById('visibleMarkers').textContent = visibleCount;
             
             // Fit bounds to show all markers
             if (markers.length > 0) {
                 map.fitBounds(markers);
             }
+        }
+        
+        function findDestinationByName(name) {
+            const types = ['main', 'optional', 'other', 'restaurants'];
+            for (const type of types) {
+                const found = (tripData.destinations[type] || []).find(d => 
+                    d.placeName?.toLowerCase().includes(name.toLowerCase()) ||
+                    d.city?.toLowerCase().includes(name.toLowerCase())
+                );
+                if (found) return found;
+            }
+            return null;
         }
         
         function extractCoordsFromMapsLink(url) {

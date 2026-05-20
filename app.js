@@ -1,4 +1,4 @@
-        // Stub functions - will be properly defined later after DOM loads
+// Stub functions - will be properly defined later after DOM loads
         // These prevent "undefined" errors when HTML parses
         window.showPage = function() {};
         window.logout = function() {};
@@ -560,15 +560,6 @@
             const menu = document.getElementById('quickActionsMenu');
             menu.classList.toggle('active');
         }
-        
-        // Close quick actions when clicking outside
-        document.addEventListener('click', (e) => {
-            const fab = document.getElementById('quickActionsFab');
-            const menu = document.getElementById('quickActionsMenu');
-            if (menu && fab && !fab.contains(e.target) && !menu.contains(e.target)) {
-                menu.classList.remove('active');
-            }
-        });
         
         // WEATHER WIDGET
         async function showWeatherWidget() {
@@ -2533,14 +2524,18 @@
             }
         }
 
-        // Event Listeners
-        document.getElementById('destination').addEventListener('change', saveDataSync);
-        document.getElementById('departureDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
-        document.getElementById('returnDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
-
         // Initialize
         window.addEventListener('load', async () => {
             console.log('🎬 Window loaded, starting initialization...');
+            
+            // Event Listeners - must be after DOM loads
+            const destEl = document.getElementById('destination');
+            const depEl = document.getElementById('departureDate');
+            const retEl = document.getElementById('returnDate');
+            
+            if (destEl) destEl.addEventListener('change', saveDataSync);
+            if (depEl) depEl.addEventListener('change', () => { saveDataSync(); updateAllStats(); });
+            if (retEl) retEl.addEventListener('change', () => { saveDataSync(); updateAllStats(); });
             
             try {
                 // Check authentication
@@ -3096,15 +3091,6 @@
             loadNotifications();
         }
 
-        // Close notification panel when clicking outside
-        document.addEventListener('click', (e) => {
-            const bell = document.getElementById('notificationBell');
-            const panel = document.getElementById('notificationPanel');
-            if (!bell.contains(e.target) && !panel.contains(e.target)) {
-                panel.classList.remove('active');
-            }
-        });
-
         // Logout
         async function logout() {
             await sb.auth.signOut();
@@ -3129,6 +3115,24 @@
             // Quick actions FAB
             const quickFab = document.getElementById('quickActionsFab');
             if (quickFab) quickFab.addEventListener('click', toggleQuickActions);
+            
+            // Close quick actions when clicking outside
+            document.addEventListener('click', (e) => {
+                const fab = document.getElementById('quickActionsFab');
+                const menu = document.getElementById('quickActionsMenu');
+                if (menu && fab && !fab.contains(e.target) && !menu.contains(e.target)) {
+                    menu.classList.remove('active');
+                }
+            });
+            
+            // Close notification panel when clicking outside
+            document.addEventListener('click', (e) => {
+                const bell = document.getElementById('notificationBell');
+                const panel = document.getElementById('notificationPanel');
+                if (bell && panel && !bell.contains(e.target) && !panel.contains(e.target)) {
+                    panel.classList.remove('active');
+                }
+            });
             
             console.log('✅ Event listeners attached');
         });

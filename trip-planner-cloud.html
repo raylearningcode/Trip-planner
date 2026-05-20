@@ -1943,7 +1943,9 @@
             
             if (personalData && personalData.length > 0) {
                 for (const row of personalData) {
-                    if (row.data_type !== 'personal_notes') {
+                    if (row.data_type === 'checklist_progress') {
+                        tripData.myChecklistProgress = row.data;
+                    } else if (row.data_type !== 'personal_notes') {
                         tripData[row.data_type] = row.data;
                     }
                 }
@@ -1963,6 +1965,7 @@
                     if (row.data_type === 'shared_expenses') tripData.sharedExpenses = row.data;
                     if (row.data_type === 'bookings') tripData.bookings = row.data;
                     if (row.data_type === 'todos') tripData.todos = row.data;
+                    if (row.data_type === 'shared_checklist') tripData.sharedChecklist = row.data;
                 }
             }
             
@@ -2042,6 +2045,9 @@
             if (!tripData.sharedExpenses) tripData.sharedExpenses = [];
             if (!tripData.packing) tripData.packing = [];
             if (!tripData.bookings) tripData.bookings = [];
+            if (!tripData.todos) tripData.todos = [];
+            if (!tripData.sharedChecklist) tripData.sharedChecklist = [];
+            if (!tripData.myChecklistProgress) tripData.myChecklistProgress = {};
             if (!tripData.todos) tripData.todos = [];
             if (!tripData.destinations) tripData.destinations = { main: [], optional: [], other: [], restaurants: [] };
             if (!tripData.dayPlans) tripData.dayPlans = [];
@@ -2344,12 +2350,11 @@
                 document.body.appendChild(indicator);
             }
             
-            indicator.style.opacity = '1';
+            indicator.style.opacity = '0.4';
             
-            // Hide after 1.5 seconds
             setTimeout(() => {
                 indicator.style.opacity = '0';
-            }, 1500);
+            }, 1000);
         }
         
         // QUICK ACTIONS
@@ -3504,7 +3509,12 @@
         }
         
         function deleteTodo(idx) {
-            if (confirm('Delete?')) { tripData.todos.splice(idx, 1); renderTodos(); saveData(); }
+            const task = tripData.todos[idx].task || 'this task';
+            if (!confirm(`Delete "${task}"?`)) return;
+            if (!confirm('Are you sure? This cannot be undone.')) return;
+            tripData.todos.splice(idx, 1);
+            renderTodos();
+            saveData();
         }
         
         // SHARED CHECKLIST (Owner creates template, members track own progress)
@@ -3631,28 +3641,78 @@
                 return;
             }
             
+            const currentAssigned = tripData.sharedChecklist[idx].assignedTo || '';
+            const currentNames = currentAssigned.split(', ').filter(n => n);
+            
             const modalContent = `
-                <div style="max-width: 400px;">
-                    <h2 style="margin-bottom: 20px;">Select Member</h2>
-                    <div style="max-height: 300px; overflow-y: auto;">
-                        ${tripData.group.map(member => `
-                            <div onclick="assignToMember(${idx}, '${member.name}')" 
-                                style="padding: 12px 16px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
-                                onmouseover="this.style.background='var(--bg-main)'; this.style.borderLeft='4px solid var(--primary)'"
-                                onmouseout="this.style.background='var(--bg-hover)'; this.style.borderLeft='none'">
-                                <div style="font-weight: 600;">${member.name || 'Unnamed'}</div>
-                                ${member.email ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">${member.email}</div>` : ''}
-                            </div>
-                        `).join('')}
+                <div style="max-width: 500px;">
+                    <h2 style="margin-bottom: 20px;">Assign To Members</h2>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">Select members who should complete this task</p>
+                    
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <button onclick="selectAllAssignees(${idx})" class="btn btn-secondary btn-sm">Select All</button>
+                        <button onclick="deselectAllAssignees(${idx})" class="btn btn-secondary btn-sm">Deselect All</button>
                     </div>
-                    <button onclick="closeModal()" class="btn btn-secondary" style="width: 100%; margin-top: 16px;">Cancel</button>
+                    
+                    <div id="assigneeList" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+                        ${tripData.group.map((member, mIdx) => {
+                            const isSelected = currentNames.includes(member.name);
+                            return `
+                                <label style="display: flex; align-items: center; padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; cursor: pointer; border: 2px solid ${isSelected ? 'var(--primary)' : 'transparent'}; transition: all 0.2s;"
+                                    onmouseover="this.style.background='var(--bg-main)'"
+                                    onmouseout="this.style.background='var(--bg-hover)'">
+                                    <input type="checkbox" ${isSelected ? 'checked' : ''} 
+                                        onchange="toggleAssignee(${idx}, ${mIdx})"
+                                        style="width: 18px; height: 18px; margin-right: 12px; cursor: pointer; accent-color: var(--primary);">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600;">${member.name || 'Unnamed'}</div>
+                                        ${member.email ? `<div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">${member.email}</div>` : ''}
+                                    </div>
+                                </label>
+                            `;
+                        }).join('')}
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="closeModal()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                        <button onclick="saveAssignees(${idx})" class="btn btn-primary" style="flex: 1;">Done</button>
+                    </div>
                 </div>
             `;
             showModal(modalContent);
+            
+            // Store temp selection in window
+            window.tempAssignees = [...currentNames];
         }
         
-        function assignToMember(idx, name) {
-            tripData.sharedChecklist[idx].assignedTo = name;
+        function toggleAssignee(checklistIdx, memberIdx) {
+            const memberName = tripData.group[memberIdx].name;
+            if (!window.tempAssignees) window.tempAssignees = [];
+            
+            const idx = window.tempAssignees.indexOf(memberName);
+            if (idx > -1) {
+                window.tempAssignees.splice(idx, 1);
+            } else {
+                window.tempAssignees.push(memberName);
+            }
+        }
+        
+        function selectAllAssignees(checklistIdx) {
+            window.tempAssignees = tripData.group.map(m => m.name);
+            // Re-render modal
+            selectAssignee(checklistIdx);
+        }
+        
+        function deselectAllAssignees(checklistIdx) {
+            window.tempAssignees = [];
+            // Re-render modal
+            selectAssignee(checklistIdx);
+        }
+        
+        function saveAssignees(idx) {
+            if (!window.tempAssignees) window.tempAssignees = [];
+            tripData.sharedChecklist[idx].assignedTo = window.tempAssignees.join(', ');
+            window.tempAssignees = null;
             closeModal();
             renderSharedChecklist();
             saveData();

@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trip Planner - Your Journey (Cloud Sync)</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Trip Planner">
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlRyaXAgUGxhbm5lciIsCiAgInNob3J0X25hbWUiOiAiVHJpcFBsYW4iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzBmMGYyMyIsCiAgInRoZW1lX2NvbG9yIjogIiM2MzY2ZjEiLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWwsJTNDc3ZnJTIwd2lkdGg9JzE5MicgaGVpZ2h0PScxOTInIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyclM0UlM0NyZWN0JTIwd2lkdGg9JzE5MicgaGVpZ2h0PScxOTInIGZpbGw9JyUyMzYzNjZmMScvJTNFJTNDdGV4dCUyMHg9JzUwJTI1JyUyMHk9JzUwJTI1JyUyMGZvbnQtc2l6ZT0nODAnJTIwdGV4dC1hbmNob3I9J21pZGRsZSclMjBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJyUyMGZpbGw9J3doaXRlJyUzRSVGMCU5RiU4RiU5NiUzQy90ZXh0JTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyUyMHdpZHRoPSc1MTInIGhlaWdodD0nNTEyJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnJTNFJTNDcmVjdCUyMHdpZHRoPSc1MTInIGhlaWdodD0nNTEyJyBmaWxsPSclMjM2MzY2ZjEnLyUzRSUzQ3RleHQlMjB4PSc1MCUyNSclMjB5PSc1MCUyNSclMjBmb250LXNpemU9JzIwMCclMjB0ZXh0LWFuY2hvcj0nbWlkZGxlJyUyMGRvbWluYW50LWJhc2VsaW5lPSdtaWRkbGUnJTIwZmlsbD0nd2hpdGUnJTNFJUYwJTlGJThGJTk2JTNDLyV0ZXh0JTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     
     <!-- Inline script to define functions BEFORE HTML needs them -->
@@ -235,6 +243,91 @@
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        /* Document Cards */
+        .document-card {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .document-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+
+        .document-preview {
+            width: 100%;
+            height: 140px;
+            background: var(--bg-main);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            overflow: hidden;
+        }
+
+        .document-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .document-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .document-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .document-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .document-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .document-actions button {
+            flex: 1;
+            padding: 8px;
+            font-size: 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .doc-btn-view {
+            background: var(--primary);
+            color: white;
+        }
+
+        .doc-btn-delete {
+            background: var(--danger);
+            color: white;
         }
 
         .card-actions {
@@ -1037,6 +1130,97 @@
             }
         }
 
+        /* Bottom Navigation (Mobile) */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 65px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            z-index: 1000;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 8px;
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            height: 100%;
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 8px;
+        }
+
+        .bottom-nav-item .nav-icon {
+            font-size: 24px;
+            margin-bottom: 2px;
+        }
+
+        .bottom-nav-item.active {
+            color: var(--primary);
+        }
+
+        .bottom-nav-item:active {
+            transform: scale(0.95);
+        }
+
+        /* Offline Status Bar */
+        .offline-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: var(--warning);
+            color: #000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 10000;
+            animation: slideDown 0.3s ease;
+        }
+
+        .offline-bar.active {
+            display: flex;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
+        .sync-status {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: none;
+            align-items: center;
+            gap: 8px;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .sync-status.active {
+            display: flex;
+        }
+
         @media (max-width: 1024px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -1048,6 +1232,7 @@
                 margin-left: 0;
                 padding: 24px 16px;
                 padding-top: 70px;
+                padding-bottom: 85px; /* Space for bottom nav */
             }
             .mobile-menu-toggle {
                 display: flex;
@@ -1060,6 +1245,15 @@
             }
             .form-grid {
                 grid-template-columns: 1fr;
+            }
+            .bottom-nav {
+                display: flex;
+            }
+            .quick-actions-fab {
+                bottom: 85px; /* Move above bottom nav */
+            }
+            .quick-actions-menu {
+                bottom: 145px;
             }
         }
 
@@ -1117,6 +1311,9 @@
                 <div class="nav-section-title">Planning</div>
                 <div class="nav-item active" onclick="showPage('overview')">
                     <span class="nav-icon">🏠</span><span>Overview</span>
+                </div>
+                <div class="nav-item" onclick="showPage('timeline')">
+                    <span class="nav-icon">⏱️</span><span>Timeline</span>
                 </div>
                 <div class="nav-item" onclick="showPage('itinerary')">
                     <span class="nav-icon">📅</span><span>Itinerary</span>
@@ -1407,8 +1604,8 @@
         <!-- Bookings Page -->
         <div class="page" id="bookings">
             <div class="page-header">
-                <h1 class="page-title">Bookings & Reservations</h1>
-                <p class="page-subtitle">Track confirmations and tickets</p>
+                <h1 class="page-title">Bookings & Documents</h1>
+                <p class="page-subtitle">Track confirmations, tickets & travel documents</p>
             </div>
 
             <div class="card">
@@ -1433,6 +1630,53 @@
                         </thead>
                         <tbody id="bookingsTableBody"></tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Document Storage Section -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📄 Travel Documents</div>
+                    <button class="btn btn-primary btn-sm" onclick="document.getElementById('documentUpload').click()">
+                        📤 Upload Document
+                    </button>
+                    <input type="file" id="documentUpload" style="display: none;" 
+                           accept=".pdf,.jpg,.jpeg,.png" 
+                           onchange="handleDocumentUpload(event)" multiple>
+                </div>
+
+                <!-- Document Categories -->
+                <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button class="btn btn-sm" onclick="filterDocuments('all')" id="docFilterAll" style="background: var(--primary);">
+                        All
+                    </button>
+                    <button class="btn btn-sm" onclick="filterDocuments('flights')" id="docFilterFlights" style="background: var(--bg-hover);">
+                        ✈️ Flights
+                    </button>
+                    <button class="btn btn-sm" onclick="filterDocuments('hotels')" id="docFilterHotels" style="background: var(--bg-hover);">
+                        🏨 Hotels
+                    </button>
+                    <button class="btn btn-sm" onclick="filterDocuments('visas')" id="docFilterVisas" style="background: var(--bg-hover);">
+                        🛂 Visas
+                    </button>
+                    <button class="btn btn-sm" onclick="filterDocuments('insurance')" id="docFilterInsurance" style="background: var(--bg-hover);">
+                        🛡️ Insurance
+                    </button>
+                    <button class="btn btn-sm" onclick="filterDocuments('tickets')" id="docFilterTickets" style="background: var(--bg-hover);">
+                        🎟️ Tickets
+                    </button>
+                    <button class="btn btn-sm" onclick="filterDocuments('ids')" id="docFilterIds" style="background: var(--bg-hover);">
+                        🆔 IDs
+                    </button>
+                </div>
+
+                <!-- Documents Grid -->
+                <div id="documentsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;">
+                    <!-- Documents will be rendered here -->
+                </div>
+
+                <div id="noDocuments" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    📄 No documents uploaded yet. Click "Upload Document" to add files.
                 </div>
             </div>
         </div>
@@ -1464,6 +1708,56 @@
                         </thead>
                         <tbody id="logisticsTableBody"></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline Page -->
+        <div class="page" id="timeline">
+            <div class="page-header">
+                <h1 class="page-title">📅 Trip Timeline</h1>
+                <p class="page-subtitle">Visual journey overview</p>
+            </div>
+
+            <!-- Countdown Widget -->
+            <div class="card" style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); border: none; text-align: center;">
+                <div style="font-size: 48px; font-weight: 700; color: white;" id="timelineCountdown">--</div>
+                <div style="font-size: 16px; color: rgba(255,255,255,0.9); margin-top: 8px;">Days Until Departure</div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📊 Trip Progress</div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: var(--primary);" id="timelineBudgetProgress">0%</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Budget Saved</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: var(--success);" id="timelineTaskProgress">0%</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Tasks Complete</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: var(--warning);" id="timelineBookingProgress">0</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Bookings Made</div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="timelineOverallProgress" style="width: 0%; background: linear-gradient(90deg, var(--primary), var(--secondary));"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Day Cards Timeline -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🗓️ Day by Day</div>
+                </div>
+                <div id="timelineDaysContainer" style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Days rendered here -->
                 </div>
             </div>
         </div>
@@ -1775,6 +2069,41 @@
         </div>
     </div>
 
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav" id="bottomNav">
+        <div class="bottom-nav-item active" onclick="showPage('overview')" data-page="overview">
+            <span class="nav-icon">🏠</span>
+            <span>Home</span>
+        </div>
+        <div class="bottom-nav-item" onclick="showPage('budget')" data-page="budget">
+            <span class="nav-icon">💰</span>
+            <span>Budget</span>
+        </div>
+        <div class="bottom-nav-item" onclick="showPage('itinerary')" data-page="itinerary">
+            <span class="nav-icon">📅</span>
+            <span>Itinerary</span>
+        </div>
+        <div class="bottom-nav-item" onclick="showPage('bookings')" data-page="bookings">
+            <span class="nav-icon">🎫</span>
+            <span>Docs</span>
+        </div>
+        <div class="bottom-nav-item" onclick="toggleSidebar()">
+            <span class="nav-icon">☰</span>
+            <span>More</span>
+        </div>
+    </nav>
+
+    <!-- Offline Status Bar -->
+    <div class="offline-bar" id="offlineBar">
+        ⚠️ Offline Mode - Changes will sync when online
+    </div>
+
+    <!-- Sync Status Indicator -->
+    <div class="sync-status" id="syncStatus">
+        <span id="syncStatusIcon">☁️</span>
+        <span id="syncStatusText">Synced</span>
+    </div>
+
     <!-- Modals -->
     <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
         <div class="modal" id="modalContent"></div>
@@ -1854,7 +2183,8 @@
             dayPlans: [],
             sharedExpenses: [],
             packing: [],
-            bookings: []
+            bookings: [],
+            documents: [] // { id, name, category, type, size, uploadedAt, uploadedBy, base64 }
         };
 
         const defaultBudget = [];
@@ -2844,8 +3174,17 @@
             currentPage = pageId; // Track current page for real-time reload
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.bottom-nav-item').forEach(n => n.classList.remove('active'));
+            
             document.getElementById(pageId).classList.add('active');
-            event.currentTarget.classList.add('active');
+            
+            // Update sidebar nav
+            const sidebarNav = document.querySelector(`.nav-item[onclick*="'${pageId}'"]`);
+            if (sidebarNav) sidebarNav.classList.add('active');
+            
+            // Update bottom nav
+            const bottomNav = document.querySelector(`.bottom-nav-item[data-page="${pageId}"]`);
+            if (bottomNav) bottomNav.classList.add('active');
 
             if (window.innerWidth <= 1024) toggleSidebar();
             if (pageId === 'map' && !window.mapInitialized) initMap();
@@ -3141,6 +3480,180 @@
                 `;
                 tbody.appendChild(row);
             });
+            
+            // Render documents
+            renderDocuments();
+        }
+
+        // Document Management Functions
+        let currentDocFilter = 'all';
+
+        async function handleDocumentUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            for (const file of files) {
+                // Validate size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert(`${file.name} is too large. Max 5MB per file.`);
+                    continue;
+                }
+
+                // Show category selector
+                const category = await selectDocumentCategory();
+                if (!category) continue;
+
+                // Convert to base64
+                const base64 = await fileToBase64(file);
+                
+                const doc = {
+                    id: Date.now() + Math.random().toString(36).substr(2, 9),
+                    name: file.name,
+                    category: category,
+                    type: file.type,
+                    size: file.size,
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: user?.username || user?.email || 'Unknown',
+                    base64: base64
+                };
+
+                tripData.documents.push(doc);
+            }
+
+            await saveData();
+            renderDocuments();
+            showSuccessToast(`${files.length} document(s) uploaded`);
+            
+            // Reset input
+            event.target.value = '';
+        }
+
+        function selectDocumentCategory() {
+            return new Promise(resolve => {
+                showModal(`
+                    <h2 style="margin-bottom: 20px;">Select Document Category</h2>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('flights')">✈️ Flights</button>
+                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('hotels')">🏨 Hotels</button>
+                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('visas')">🛂 Visas</button>
+                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('insurance')">🛡️ Insurance</button>
+                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('tickets')">🎟️ Tickets</button>
+                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('ids')">🆔 IDs/Passports</button>
+                    </div>
+                    <button class="btn btn-secondary" style="margin-top: 16px; width: 100%;" onclick="closeModal(); window.tempResolve(null)">Cancel</button>
+                `);
+                window.tempResolve = resolve;
+            });
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function filterDocuments(category) {
+            currentDocFilter = category;
+            
+            // Update filter buttons
+            document.querySelectorAll('[id^="docFilter"]').forEach(btn => {
+                btn.style.background = 'var(--bg-hover)';
+            });
+            document.getElementById('docFilter' + category.charAt(0).toUpperCase() + category.slice(1)).style.background = 'var(--primary)';
+            
+            renderDocuments();
+        }
+
+        function renderDocuments() {
+            if (!tripData.documents) tripData.documents = [];
+            
+            const grid = document.getElementById('documentsGrid');
+            const noDocsEl = document.getElementById('noDocuments');
+            
+            const filtered = currentDocFilter === 'all' 
+                ? tripData.documents 
+                : tripData.documents.filter(d => d.category === currentDocFilter);
+
+            if (filtered.length === 0) {
+                grid.style.display = 'none';
+                noDocsEl.style.display = 'block';
+                return;
+            }
+
+            grid.style.display = 'grid';
+            noDocsEl.style.display = 'none';
+            grid.innerHTML = '';
+
+            filtered.forEach(doc => {
+                const card = document.createElement('div');
+                card.className = 'document-card';
+                
+                const isImage = doc.type.startsWith('image/');
+                const isPDF = doc.type === 'application/pdf';
+                
+                card.innerHTML = `
+                    <div class="document-preview">
+                        ${isImage ? `<img src="${doc.base64}" alt="${doc.name}">` : 
+                          isPDF ? '📄' : '📋'}
+                    </div>
+                    <div class="document-info">
+                        <div class="document-name" title="${doc.name}">${doc.name}</div>
+                        <div class="document-meta">
+                            <span>${formatFileSize(doc.size)}</span>
+                            <span>${new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-tertiary);">
+                            By ${doc.uploadedBy}
+                        </div>
+                    </div>
+                    <div class="document-actions">
+                        <button class="doc-btn-view" onclick="viewDocument('${doc.id}')">👁️ View</button>
+                        <button class="doc-btn-delete" onclick="deleteDocument('${doc.id}')">🗑️</button>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function viewDocument(docId) {
+            const doc = tripData.documents.find(d => d.id === docId);
+            if (!doc) return;
+
+            const isImage = doc.type.startsWith('image/');
+            const isPDF = doc.type === 'application/pdf';
+
+            showModal(`
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>${doc.name}</h2>
+                    <a href="${doc.base64}" download="${doc.name}" class="btn btn-primary btn-sm">
+                        💾 Download
+                    </a>
+                </div>
+                <div style="max-height: 70vh; overflow: auto;">
+                    ${isImage ? `<img src="${doc.base64}" style="width: 100%; border-radius: 8px;">` :
+                      isPDF ? `<embed src="${doc.base64}" type="application/pdf" style="width: 100%; height: 600px;">` :
+                      '<p>Preview not available. Click Download to view.</p>'}
+                </div>
+            `);
+        }
+
+        async function deleteDocument(docId) {
+            if (!confirm('Delete this document? This cannot be undone.')) return;
+            
+            tripData.documents = tripData.documents.filter(d => d.id !== docId);
+            await saveData();
+            renderDocuments();
+            showSuccessToast('Document deleted');
         }
 
         // Checklist Functions
@@ -4031,6 +4544,8 @@
         }
 
         function calculateSettlements() {
+            if (!tripData.settlements) tripData.settlements = {}; // { "Alice->Bob": { amount: 50, paid: false, paidAt: null } }
+            
             const balances = {};
 
             tripData.sharedExpenses.forEach(exp => {
@@ -4061,20 +4576,174 @@
                 return;
             }
 
-            sorted.forEach(([person, balance]) => {
-                if (Math.abs(balance) < 1) return;
+            // Calculate who owes whom
+            const creditors = sorted.filter(([p, b]) => b > 1).map(([p, b]) => ({ name: p, amount: b }));
+            const debtors = sorted.filter(([p, b]) => b < -1).map(([p, b]) => ({ name: p, amount: Math.abs(b) }));
 
-                const div = document.createElement('div');
-                div.style.cssText = 'padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ' + (balance > 0 ? 'var(--success)' : 'var(--danger)');
+            const transactions = [];
+            let i = 0, j = 0;
 
-                if (balance > 0) {
-                    div.innerHTML = `<strong style="color: var(--success);">${person}</strong> is owed <strong>${formatCurrency(Math.round(balance))}</strong>`;
-                } else {
-                    div.innerHTML = `<strong style="color: var(--danger);">${person}</strong> owes <strong>${formatCurrency(Math.round(Math.abs(balance)))}</strong>`;
+            while (i < creditors.length && j < debtors.length) {
+                const creditor = creditors[i];
+                const debtor = debtors[j];
+                const amount = Math.min(creditor.amount, debtor.amount);
+
+                if (amount > 1) {
+                    const key = `${debtor.name}->${creditor.name}`;
+                    const isPaid = tripData.settlements[key]?.paid || false;
+                    transactions.push({ from: debtor.name, to: creditor.name, amount: Math.round(amount), key, isPaid });
                 }
+
+                creditor.amount -= amount;
+                debtor.amount -= amount;
+
+                if (creditor.amount < 1) i++;
+                if (debtor.amount < 1) j++;
+            }
+
+            // Render transactions
+            transactions.forEach(tx => {
+                const div = document.createElement('div');
+                div.style.cssText = `
+                    padding: 14px; 
+                    background: var(--bg-hover); 
+                    border-radius: 8px; 
+                    margin-bottom: 10px; 
+                    border-left: 4px solid ${tx.isPaid ? 'var(--success)' : 'var(--warning)'};
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                `;
+
+                div.innerHTML = `
+                    <div style="flex: 1;">
+                        <strong style="color: var(--text-primary);">${tx.from}</strong> 
+                        <span style="color: var(--text-secondary);">→</span> 
+                        <strong style="color: var(--text-primary);">${tx.to}</strong>
+                        <div style="font-size: 18px; font-weight: 700; color: var(--primary); margin-top: 4px;">
+                            ${formatCurrency(tx.amount)}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        ${tx.isPaid ? 
+                            `<button class="btn btn-sm" style="background: var(--success); color: white; pointer-events: none;">
+                                ✓ Paid
+                            </button>` :
+                            `<button class="btn btn-sm btn-primary" onclick="markSettlementPaid('${tx.key}')">
+                                Mark Paid
+                            </button>`
+                        }
+                    </div>
+                `;
 
                 summary.appendChild(div);
             });
+
+            // Add export button
+            if (transactions.length > 0) {
+                const exportDiv = document.createElement('div');
+                exportDiv.style.cssText = 'margin-top: 20px; display: flex; gap: 12px;';
+                exportDiv.innerHTML = `
+                    <button class="btn btn-secondary btn-sm" onclick="exportSettlements()">
+                        📋 Copy to Clipboard
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="exportSettlementsWhatsApp()">
+                        💬 Format for WhatsApp
+                    </button>
+                `;
+                summary.appendChild(exportDiv);
+            }
+        }
+
+        function markSettlementPaid(key) {
+            if (!tripData.settlements) tripData.settlements = {};
+            tripData.settlements[key] = { paid: true, paidAt: new Date().toISOString() };
+            saveData();
+            calculateSettlements();
+            showSuccessToast('Payment marked as complete');
+            triggerHaptic('medium');
+        }
+
+        function exportSettlements() {
+            const balances = {};
+            tripData.sharedExpenses.forEach(exp => {
+                const paidBy = exp.paidBy;
+                const amount = exp.amount || 0;
+                const splitBetween = exp.splitBetween || [];
+                if (!paidBy || splitBetween.length === 0 || amount === 0) return;
+                const perPerson = amount / splitBetween.length;
+                if (!balances[paidBy]) balances[paidBy] = 0;
+                balances[paidBy] += amount;
+                splitBetween.forEach(member => {
+                    if (!balances[member]) balances[member] = 0;
+                    balances[member] -= perPerson;
+                });
+            });
+
+            const sorted = Object.entries(balances).sort((a, b) => b[1] - a[1]);
+            const creditors = sorted.filter(([p, b]) => b > 1).map(([p, b]) => ({ name: p, amount: b }));
+            const debtors = sorted.filter(([p, b]) => b < -1).map(([p, b]) => ({ name: p, amount: Math.abs(b) }));
+            const transactions = [];
+            let i = 0, j = 0;
+            while (i < creditors.length && j < debtors.length) {
+                const creditor = creditors[i];
+                const debtor = debtors[j];
+                const amount = Math.min(creditor.amount, debtor.amount);
+                if (amount > 1) transactions.push({ from: debtor.name, to: creditor.name, amount: Math.round(amount) });
+                creditor.amount -= amount;
+                debtor.amount -= amount;
+                if (creditor.amount < 1) i++;
+                if (debtor.amount < 1) j++;
+            }
+
+            let text = '💰 Trip Settlement Summary\n\n';
+            transactions.forEach(tx => {
+                text += `${tx.from} → ${tx.to}: ${formatCurrency(tx.amount)}\n`;
+            });
+
+            navigator.clipboard.writeText(text);
+            showSuccessToast('Copied to clipboard!');
+        }
+
+        function exportSettlementsWhatsApp() {
+            const balances = {};
+            tripData.sharedExpenses.forEach(exp => {
+                const paidBy = exp.paidBy;
+                const amount = exp.amount || 0;
+                const splitBetween = exp.splitBetween || [];
+                if (!paidBy || splitBetween.length === 0 || amount === 0) return;
+                const perPerson = amount / splitBetween.length;
+                if (!balances[paidBy]) balances[paidBy] = 0;
+                balances[paidBy] += amount;
+                splitBetween.forEach(member => {
+                    if (!balances[member]) balances[member] = 0;
+                    balances[member] -= perPerson;
+                });
+            });
+
+            const sorted = Object.entries(balances).sort((a, b) => b[1] - a[1]);
+            const creditors = sorted.filter(([p, b]) => b > 1).map(([p, b]) => ({ name: p, amount: b }));
+            const debtors = sorted.filter(([p, b]) => b < -1).map(([p, b]) => ({ name: p, amount: Math.abs(b) }));
+            const transactions = [];
+            let i = 0, j = 0;
+            while (i < creditors.length && j < debtors.length) {
+                const creditor = creditors[i];
+                const debtor = debtors[j];
+                const amount = Math.min(creditor.amount, debtor.amount);
+                if (amount > 1) transactions.push({ from: debtor.name, to: creditor.name, amount: Math.round(amount) });
+                creditor.amount -= amount;
+                debtor.amount -= amount;
+                if (creditor.amount < 1) i++;
+                if (debtor.amount < 1) j++;
+            }
+
+            let text = '*💰 Trip Settlement*\n\n';
+            transactions.forEach(tx => {
+                text += `• ${tx.from} pays *${formatCurrency(tx.amount)}* to ${tx.to}\n`;
+            });
+
+            navigator.clipboard.writeText(text);
+            showSuccessToast('WhatsApp format copied!');
         }
 
         // Destinations Functions
@@ -4479,7 +5148,7 @@
             const totalTasks = tripData.logistics.length;
             const doneTasks = tripData.logistics.filter(t => t.status).length;
             document.getElementById('tasksComplete').textContent = doneTasks + '/' + totalTasks;
-
+            
             // Date range
             const depStr = dep.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             const retStr = ret.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -4487,6 +5156,92 @@
 
             // Update overview summary
             updateOverviewSummary();
+            
+            // Update Timeline Stats
+            updateTimelineStats(days, progress, totalTasks, doneTasks);
+        }
+
+        function updateTimelineStats(daysUntil, budgetProgress, totalTasks, doneTasks) {
+            const countdownEl = document.getElementById('timelineCountdown');
+            const budgetProgressEl = document.getElementById('timelineBudgetProgress');
+            const taskProgressEl = document.getElementById('timelineTaskProgress');
+            const bookingProgressEl = document.getElementById('timelineBookingProgress');
+            const overallProgressEl = document.getElementById('timelineOverallProgress');
+            
+            if (countdownEl) countdownEl.textContent = daysUntil > 0 ? daysUntil : '🎉';
+            if (budgetProgressEl) budgetProgressEl.textContent = Math.round(budgetProgress) + '%';
+            if (taskProgressEl) taskProgressEl.textContent = totalTasks > 0 ? Math.round((doneTasks/totalTasks)*100) + '%' : '0%';
+            if (bookingProgressEl) bookingProgressEl.textContent = tripData.bookings.length;
+            
+            // Overall progress = average of budget, tasks, bookings
+            const bookingProgress = tripData.bookings.length > 0 ? 100 : 0;
+            const taskProgress = totalTasks > 0 ? (doneTasks/totalTasks)*100 : 0;
+            const overall = (budgetProgress + taskProgress + (bookingProgress > 0 ? 50 : 0)) / 3;
+            if (overallProgressEl) overallProgressEl.style.width = Math.round(overall) + '%';
+            
+            renderTimeline();
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('timelineDaysContainer');
+            if (!container) return;
+            
+            if (!tripData.dayPlans || tripData.dayPlans.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No days planned yet. Go to Itinerary to add days.</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            tripData.dayPlans.forEach((day, idx) => {
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: var(--bg-hover);
+                    border: 1px solid var(--border);
+                    border-radius: var(--radius-md);
+                    padding: 20px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                `;
+                
+                const activities = day.activities?.length || 0;
+                const budget = day.budget || 0;
+                
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--primary);">Day ${idx + 1}</div>
+                            <div style="font-size: 14px; color: var(--text-secondary);">${day.date || 'No date set'}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 16px; font-weight: 600; color: var(--success);">${formatEur(budget / exchangeRate)}</div>
+                            <div style="font-size: 12px; color: var(--text-tertiary);">${activities} activities</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">
+                        ${day.title || 'Untitled day'}
+                    </div>
+                    <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        ${(day.activities || []).slice(0, 3).map(act => 
+                            `<span style="padding: 4px 10px; background: var(--bg-main); border-radius: 6px; font-size: 11px; color: var(--text-secondary);">
+                                ${act.time || ''} ${act.activity || 'Activity'}
+                            </span>`
+                        ).join('')}
+                        ${activities > 3 ? `<span style="padding: 4px 10px; background: var(--bg-main); border-radius: 6px; font-size: 11px; color: var(--text-tertiary);">+${activities - 3} more</span>` : ''}
+                    </div>
+                `;
+                
+                card.onclick = () => {
+                    showPage('itinerary');
+                    // Scroll to day
+                    setTimeout(() => {
+                        const dayCard = document.querySelector(`[data-day-idx="${idx}"]`);
+                        if (dayCard) dayCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                };
+                
+                container.appendChild(card);
+            });
         }
 
         function updateOverviewSummary() {
@@ -5208,6 +5963,136 @@
         setInterval(saveDataSync, 30000);
         
         // Attach event listeners for toggle functions (must be after DOM loads)
+        
+        // PWA Service Worker Registration
+        async function registerServiceWorker() {
+            try {
+                const registration = await navigator.serviceWorker.register('data:application/javascript;base64,' + btoa(`
+const CACHE_NAME = 'trip-planner-v1';
+const urlsToCache = ['/'];
+
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+    );
+});
+
+self.addEventListener('fetch', event => {
+    event.respondWith(
+        caches.match(event.request).then(response => {
+            return response || fetch(event.request).catch(() => {
+                if (event.request.destination === 'document') {
+                    return caches.match('/');
+                }
+            });
+        })
+    );
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(names => {
+            return Promise.all(
+                names.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))
+            );
+        })
+    );
+});
+                `));
+                console.log('✅ Service Worker registered:', registration);
+            } catch (err) {
+                console.log('⚠️ Service Worker registration failed:', err);
+            }
+        }
+
+        // Offline/Online Handlers
+        function handleOffline() {
+            document.getElementById('offlineBar').classList.add('active');
+            showSyncStatus('⚠️', 'Offline', 'var(--warning)');
+            console.log('📵 Offline mode activated');
+        }
+
+        function handleOnline() {
+            document.getElementById('offlineBar').classList.remove('active');
+            showSyncStatus('☁️', 'Syncing...', 'var(--primary)');
+            
+            // Trigger data sync
+            setTimeout(() => {
+                saveData().then(() => {
+                    showSyncStatus('✓', 'Synced', 'var(--success)');
+                    setTimeout(() => {
+                        document.getElementById('syncStatus').classList.remove('active');
+                    }, 2000);
+                });
+            }, 500);
+            
+            console.log('📶 Back online, syncing data...');
+        }
+
+        function showSyncStatus(icon, text, color) {
+            const statusEl = document.getElementById('syncStatus');
+            const iconEl = document.getElementById('syncStatusIcon');
+            const textEl = document.getElementById('syncStatusText');
+            
+            iconEl.textContent = icon;
+            textEl.textContent = text;
+            statusEl.style.borderColor = color;
+            statusEl.classList.add('active');
+        }
+
+        // Swipe Gestures for Itinerary Days
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        function setupSwipeGestures() {
+            const itineraryPage = document.getElementById('itinerary');
+            if (!itineraryPage) return;
+
+            itineraryPage.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            });
+
+            itineraryPage.addEventListener('touchend', e => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            });
+        }
+
+        function handleSwipe() {
+            const swipeThreshold = 100;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) < swipeThreshold) return;
+
+            if (diff > 0) {
+                // Swipe left - next day
+                console.log('👈 Swiped left');
+            } else {
+                // Swipe right - previous day
+                console.log('👉 Swiped right');
+            }
+        }
+
+        // Haptic Feedback
+        function setupHapticFeedback() {
+            // Add haptic to all buttons
+            document.addEventListener('click', e => {
+                if (e.target.closest('button, .btn, .nav-item, .bottom-nav-item, .quick-action')) {
+                    triggerHaptic('light');
+                }
+            });
+        }
+
+        function triggerHaptic(type = 'light') {
+            if ('vibrate' in navigator) {
+                switch(type) {
+                    case 'light': navigator.vibrate(10); break;
+                    case 'medium': navigator.vibrate(20); break;
+                    case 'heavy': navigator.vibrate(50); break;
+                }
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             // Mobile sidebar toggle
             const mobileToggle = document.getElementById('mobileMenuToggle');
@@ -5223,7 +6108,28 @@
             const quickFab = document.getElementById('quickActionsFab');
             if (quickFab) quickFab.addEventListener('click', toggleQuickActions);
             
+            // PWA Service Worker Registration
+            if ('serviceWorker' in navigator) {
+                registerServiceWorker();
+            }
+            
+            // Offline/Online Detection
+            window.addEventListener('online', handleOnline);
+            window.addEventListener('offline', handleOffline);
+            
+            // Check initial online status
+            if (!navigator.onLine) {
+                handleOffline();
+            }
+            
+            // Swipe gestures for mobile (itinerary days)
+            setupSwipeGestures();
+            
+            // Haptic feedback setup
+            setupHapticFeedback();
+            
             console.log('✅ Event listeners attached');
+            console.log('✅ PWA features initialized');
         });
     </script>
 </body>

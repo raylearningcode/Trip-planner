@@ -4314,6 +4314,11 @@
             setupRealtime();
             
             console.log('✅ App initialized with real-time updates');
+            
+            } catch (initError) {
+                console.error('❌ Initialization error:', initError);
+                alert('Failed to initialize app: ' + initError.message);
+            }
         });
 
         // Edit Username

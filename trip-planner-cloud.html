@@ -3203,17 +3203,130 @@
 
         let exchangeRate = 20453.95;
 
-        // Modal Functions
+        // Enhanced Modal Management System
+        const ModalManager = {
+            stack: [],
+            scrollPosition: 0,
+
+            open(content) {
+                // Save scroll position
+                this.scrollPosition = window.pageYOffset;
+                
+                // Add to stack
+                this.stack.push('modal');
+                
+                // Set content
+                const modalContent = document.getElementById('modalContent');
+                const modalOverlay = document.getElementById('modalOverlay');
+                
+                if (modalContent && modalOverlay) {
+                    modalContent.innerHTML = content;
+                    modalOverlay.classList.add('active');
+                }
+                
+                // Prevent body scroll
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.top = `-${this.scrollPosition}px`;
+                document.body.style.width = '100%';
+                
+                // Add escape key listener
+                document.addEventListener('keydown', this.escapeHandler);
+            },
+
+            close() {
+                // Remove from stack
+                this.stack.pop();
+                
+                const modalOverlay = document.getElementById('modalOverlay');
+                if (modalOverlay) {
+                    modalOverlay.classList.remove('active');
+                }
+                
+                // Only restore scroll if no modals are open
+                if (this.stack.length === 0) {
+                    // Restore body scroll
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    document.body.style.top = '';
+                    document.body.style.width = '';
+                    
+                    // Restore scroll position
+                    window.scrollTo(0, this.scrollPosition);
+                    
+                    // Remove escape listener
+                    document.removeEventListener('keydown', this.escapeHandler);
+                }
+            },
+
+            closeAll() {
+                this.stack = [];
+                this.close();
+            },
+
+            escapeHandler(e) {
+                if (e.key === 'Escape') {
+                    ModalManager.close();
+                }
+            }
+        };
+
+        // Wrapper functions for compatibility
         function showModal(content) {
-            document.getElementById('modalContent').innerHTML = content;
-            document.getElementById('modalOverlay').classList.add('active');
-            document.body.style.overflow = 'hidden';
+            ModalManager.open(content);
         }
 
         function closeModal() {
-            document.getElementById('modalOverlay').classList.remove('active');
-            document.body.style.overflow = '';
+            ModalManager.close();
         }
+
+        // Handle file input cleanup
+        document.addEventListener('change', function(e) {
+            if (e.target.type === 'file') {
+                // Ensure scroll is restored after file dialog closes
+                setTimeout(() => {
+                    if (document.body.style.overflow === 'hidden' && ModalManager.stack.length === 0) {
+                        console.log('🔧 Fixing stuck body scroll after file dialog');
+                        document.body.style.overflow = '';
+                        document.body.style.position = '';
+                        document.body.style.top = '';
+                        document.body.style.width = '';
+                    }
+                }, 100);
+            }
+        });
+
+        // Handle mobile overlay
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        if (mobileOverlay) {
+            mobileOverlay.addEventListener('click', function() {
+                this.classList.remove('active');
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) {
+                    sidebar.style.transform = 'translateX(-100%)';
+                }
+                // Ensure body scroll is restored
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                document.body.style.top = '';
+            });
+        }
+
+        // Global cleanup on visibility change (handles tab switches)
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                // Check if we're stuck in no-scroll mode
+                if (document.body.style.overflow === 'hidden' && ModalManager.stack.length === 0) {
+                    console.log('🔧 Restoring scroll after tab switch');
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    document.body.style.top = '';
+                    document.body.style.width = '';
+                }
+            }
+        });
+
+        console.log('✅ Enhanced modal management loaded');
 
         function showSuccessToast(message) {
             const toast = document.createElement('div');
@@ -4204,8 +4317,28 @@
         }
 
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-            document.querySelector('.mobile-overlay').classList.toggle('active');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+            
+            // Manage body scroll
+            if (sidebar.classList.contains('open')) {
+                // Opening sidebar - prevent scroll
+                ModalManager.scrollPosition = window.pageYOffset;
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.top = `-${ModalManager.scrollPosition}px`;
+                document.body.style.width = '100%';
+            } else {
+                // Closing sidebar - restore scroll
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.width = '';
+                window.scrollTo(0, ModalManager.scrollPosition);
+            }
         }
 
         // Budget Functions

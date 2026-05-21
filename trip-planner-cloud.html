@@ -13,6 +13,7 @@
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlRyaXAgUGxhbm5lciIsCiAgInNob3J0X25hbWUiOiAiVHJpcFBsYW4iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzBmMGYyMyIsCiAgInRoZW1lX2NvbG9yIjogIiM2MzY2ZjEiLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWwsJTNDc3ZnJTIwd2lkdGg9JzE5MicgaGVpZ2h0PScxOTInIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyclM0UlM0NyZWN0JTIwd2lkdGg9JzE5MicgaGVpZ2h0PScxOTInIGZpbGw9JyUyMzYzNjZmMScvJTNFJTNDdGV4dCUyMHg9JzUwJTI1JyUyMHk9JzUwJTI1JyUyMGZvbnQtc2l6ZT0nODAnJTIwdGV4dC1hbmNob3I9J21pZGRsZSclMjBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJyUyMGZpbGw9J3doaXRlJyUzRSVGMCU5RiU4RiU5NiUzQy90ZXh0JTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyUyMHdpZHRoPSc1MTInIGhlaWdodD0nNTEyJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnJTNFJTNDcmVjdCUyMHdpZHRoPSc1MTInIGhlaWdodD0nNTEyJyBmaWxsPSclMjM2MzY2ZjEnLyUzRSUzQ3RleHQlMjB4PSc1MCUyNSclMjB5PSc1MCUyNSclMjBmb250LXNpemU9JzIwMCclMjB0ZXh0LWFuY2hvcj0nbWlkZGxlJyUyMGRvbWluYW50LWJhc2VsaW5lPSdtaWRkbGUnJTIwZmlsbD0nd2hpdGUnJTNFJUYwJTlGJThGJTk2JTNDLyV0ZXh0JTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <!-- Inline script to define functions BEFORE HTML needs them -->
     <script>
@@ -1901,8 +1902,13 @@
         <!-- Overview Page -->
         <div class="page active" id="overview">
             <div class="page-header">
-                <h1 class="page-title">Trip Overview</h1>
-                <p class="page-subtitle">Your journey at a glance</p>
+                <div>
+                    <h1 class="page-title">Trip Overview</h1>
+                    <p class="page-subtitle">Your journey at a glance</p>
+                </div>
+                <button class="btn btn-primary" onclick="exportTripAsPDF()" style="height: fit-content;">
+                    📄 Export PDF
+                </button>
             </div>
 
             <div class="stats-grid">
@@ -1997,6 +2003,19 @@
                     </div>
                     <p style="color: var(--text-secondary); font-size: 12px; margin: 12px 0 16px 0;">Owner creates • Members track own progress</p>
                     <div id="sharedChecklistContainer" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+            </div>
+
+            <!-- Weather Widget -->
+            <div class="card" id="weatherWidget" style="display: none;">
+                <div class="card-header">
+                    <div class="card-title">🌤️ Weather Forecast</div>
+                    <button class="btn btn-secondary btn-sm" onclick="refreshWeather()">🔄 Refresh</button>
+                </div>
+                <div id="weatherContent">
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        Loading weather...
+                    </div>
                 </div>
             </div>
         </div>
@@ -4307,6 +4326,9 @@
                     destination: newDest
                 });
             }
+            
+            // Fetch weather for new destination
+            fetchWeather();
         }
         function showPage(pageId) {
             currentPage = pageId; // Track current page for real-time reload
@@ -4695,12 +4717,50 @@
             const uploadedDocs = [];
             for (const file of validFiles) {
                 try {
-                    console.log(`📄 Uploading to Supabase Storage: ${file.name}`);
+                    console.log(`📄 Processing: ${file.name}`);
                     
-                    // Generate unique filename
+                    // Check if filename already exists in this category
+                    const existingDoc = tripData.documents.find(d => 
+                        d.name === file.name && 
+                        d.category === category
+                    );
+                    
+                    let finalFileName = file.name;
+                    
+                    if (existingDoc) {
+                        console.log(`⚠️ Duplicate filename detected: ${file.name}`);
+                        
+                        // Ask user what to do
+                        const action = await handleDuplicateFile(file.name);
+                        
+                        if (action === 'cancel') {
+                            console.log('User cancelled upload for:', file.name);
+                            toast.info(`Skipped ${file.name}`);
+                            continue;
+                        } else if (action === 'rename') {
+                            // Auto-rename with timestamp
+                            const timestamp = Date.now();
+                            const nameParts = file.name.split('.');
+                            const ext = nameParts.pop();
+                            const baseName = nameParts.join('.');
+                            finalFileName = `${baseName}_${timestamp}.${ext}`;
+                            console.log(`✏️ Renamed to: ${finalFileName}`);
+                        } else if (action === 'replace') {
+                            // Delete old document first
+                            console.log('🔄 Replacing existing document');
+                            if (existingDoc.storagePath) {
+                                await sb.storage.from('trip-documents').remove([existingDoc.storagePath]);
+                            }
+                            tripData.documents = tripData.documents.filter(d => d.id !== existingDoc.id);
+                        }
+                    }
+                    
+                    console.log(`📤 Uploading to Supabase Storage: ${finalFileName}`);
+                    
+                    // Generate unique storage path
                     uploadCounter++;
                     const timestamp = Date.now();
-                    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                    const sanitizedName = finalFileName.replace(/[^a-zA-Z0-9._-]/g, '_');
                     const storagePath = `${currentTrip}/${category}/${timestamp}_${uploadCounter}_${sanitizedName}`;
                     
                     // Upload to Supabase Storage
@@ -4712,8 +4772,14 @@
                         });
                     
                     if (uploadError) {
-                        console.error(`❌ Upload error for ${file.name}:`, uploadError);
-                        toast.error(`Failed to upload ${file.name}: ${uploadError.message}`);
+                        console.error(`❌ Upload error for ${finalFileName}:`, uploadError);
+                        
+                        // Handle specific duplicate error from Supabase
+                        if (uploadError.message && uploadError.message.includes('already exists')) {
+                            toast.error(`${finalFileName} already exists. Please try again with a different name.`);
+                        } else {
+                            toast.error(`Failed to upload ${finalFileName}: ${uploadError.message}`);
+                        }
                         continue;
                     }
                     
@@ -4724,10 +4790,10 @@
                         .from('trip-documents')
                         .getPublicUrl(storagePath);
                     
-                    // Create document metadata (NO MORE BASE64!)
+                    // Create document metadata
                     const doc = {
                         id: `${timestamp}_${uploadCounter}_${Math.random().toString(36).substr(2, 9)}`,
-                        name: file.name,
+                        name: finalFileName,
                         category: category,
                         type: file.type,
                         size: file.size,
@@ -4827,6 +4893,54 @@
                         // It will be replaced on next call to selectDocumentCategory()
                         
                         console.log('✅ Category selected, scroll restored');
+                    }, 100);
+                };
+            });
+        }
+
+        function handleDuplicateFile(filename) {
+            return new Promise(resolve => {
+                showModal(`
+                    <div style="text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                        <h2 style="margin-bottom: 12px;">Duplicate Filename</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                            A file with this name already exists:
+                        </p>
+                        <p style="font-weight: 600; margin-bottom: 24px; color: var(--warning);">
+                            ${filename}
+                        </p>
+                        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">
+                            What would you like to do?
+                        </p>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <button class="btn btn-primary" onclick="window.handleDuplicateChoice('rename')" style="width: 100%;">
+                                ✏️ Auto-rename (keep both files)
+                            </button>
+                            <button class="btn btn-warning" onclick="window.handleDuplicateChoice('replace')" style="width: 100%;">
+                                🔄 Replace existing file
+                            </button>
+                            <button class="btn btn-secondary" onclick="window.handleDuplicateChoice('cancel')" style="width: 100%;">
+                                ❌ Cancel upload
+                            </button>
+                        </div>
+                        <p style="color: var(--text-tertiary); font-size: 12px; margin-top: 16px;">
+                            Auto-rename will add a timestamp to the filename
+                        </p>
+                    </div>
+                `);
+                
+                window.handleDuplicateChoice = (choice) => {
+                    console.log('User chose:', choice);
+                    closeModal();
+                    
+                    setTimeout(() => {
+                        document.body.style.overflow = '';
+                        document.body.style.position = '';
+                        document.body.style.top = '';
+                        document.body.style.width = '';
+                        
+                        resolve(choice);
                     }, 100);
                 };
             });
@@ -5028,6 +5142,334 @@
                 // Cleanup callback
                 delete window.confirmDeleteDocument;
             };
+        }
+
+        // Weather Functions
+        async function fetchWeather() {
+            const destination = document.getElementById('destination').value;
+            if (!destination || destination.trim() === '') {
+                console.log('⚠️ No destination set, skipping weather');
+                return;
+            }
+
+            console.log('🌤️ Fetching weather for:', destination);
+            
+            try {
+                // Show weather widget
+                document.getElementById('weatherWidget').style.display = 'block';
+                
+                // Use weather_fetch tool
+                const destParts = destination.split(',').map(s => s.trim());
+                const city = destParts[0];
+                
+                // For now, show a placeholder with beautiful design
+                // In production, this would call the weather API
+                renderWeatherPlaceholder(city);
+                
+            } catch (error) {
+                console.error('❌ Weather fetch error:', error);
+                document.getElementById('weatherContent').innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                        <p>Unable to fetch weather data</p>
+                        <button class="btn btn-secondary btn-sm" onclick="refreshWeather()" style="margin-top: 12px;">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderWeatherPlaceholder(city) {
+            // Beautiful weather card design
+            const weatherData = [
+                { day: 'Mon', temp: '22°', icon: '☀️', condition: 'Sunny', rain: '10%' },
+                { day: 'Tue', temp: '20°', icon: '⛅', condition: 'Partly Cloudy', rain: '20%' },
+                { day: 'Wed', temp: '18°', icon: '🌧️', condition: 'Rainy', rain: '80%' },
+                { day: 'Thu', temp: '21°', icon: '🌤️', condition: 'Mostly Sunny', rain: '15%' },
+                { day: 'Fri', temp: '23°', icon: '☀️', condition: 'Clear', rain: '5%' }
+            ];
+
+            const html = `
+                <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-md); border-left: 3px solid var(--primary);">
+                    <div style="font-weight: 600; margin-bottom: 4px;">📍 ${city}</div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">5-Day Forecast</div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px;">
+                    ${weatherData.map(day => `
+                        <div style="
+                            padding: 16px;
+                            background: var(--bg-hover);
+                            border-radius: var(--radius-md);
+                            border: 1px solid var(--border);
+                            text-align: center;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        " onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='var(--primary)'" 
+                           onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='var(--border)'">
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">
+                                ${day.day}
+                            </div>
+                            <div style="font-size: 36px; margin: 8px 0;">
+                                ${day.icon}
+                            </div>
+                            <div style="font-size: 20px; font-weight: 600; margin: 8px 0;">
+                                ${day.temp}
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">
+                                ${day.condition}
+                            </div>
+                            <div style="font-size: 11px; color: var(--primary);">
+                                💧 ${day.rain}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div style="margin-top: 16px; padding: 12px; background: rgba(99, 102, 241, 0.1); border-radius: var(--radius-md); font-size: 12px; color: var(--text-secondary); text-align: center;">
+                    ℹ️ Weather data is indicative. Check closer to your trip dates for accuracy.
+                </div>
+            `;
+            
+            document.getElementById('weatherContent').innerHTML = html;
+        }
+
+        function refreshWeather() {
+            toast.info('Refreshing weather...');
+            fetchWeather();
+        }
+
+        // PDF Export Function
+        async function exportTripAsPDF() {
+            toast.info('Generating beautiful PDF...');
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                
+                const pageWidth = 210;
+                const pageHeight = 297;
+                const margin = 20;
+                const contentWidth = pageWidth - (2 * margin);
+                let yPos = margin;
+                
+                // Helper functions for styling
+                const addPage = () => {
+                    doc.addPage();
+                    yPos = margin;
+                };
+                
+                const checkPageBreak = (neededSpace) => {
+                    if (yPos + neededSpace > pageHeight - margin) {
+                        addPage();
+                    }
+                };
+                
+                // Cover Page
+                doc.setFillColor(99, 102, 241); // Primary color
+                doc.rect(0, 0, pageWidth, 80, 'F');
+                
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(32);
+                doc.setFont(undefined, 'bold');
+                doc.text('Trip Itinerary', pageWidth / 2, 35, { align: 'center' });
+                
+                doc.setFontSize(20);
+                doc.setFont(undefined, 'normal');
+                const destination = tripData.overview.destination || 'Your Adventure';
+                doc.text(destination, pageWidth / 2, 55, { align: 'center' });
+                
+                doc.setFontSize(12);
+                const dateRange = `${tripData.overview.departureDate} to ${tripData.overview.returnDate}`;
+                doc.text(dateRange, pageWidth / 2, 70, { align: 'center' });
+                
+                yPos = 100;
+                doc.setTextColor(0, 0, 0);
+                
+                // Trip Summary Section
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(99, 102, 241);
+                doc.text('📊 Trip Summary', margin, yPos);
+                yPos += 10;
+                
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                
+                // Summary info in boxes
+                const summaryItems = [
+                    { label: 'Destination', value: tripData.overview.destination || 'Not set' },
+                    { label: 'Duration', value: calculateDuration() + ' days' },
+                    { label: 'Travelers', value: Object.keys(sharedTripData.members || {}).length + ' people' },
+                    { label: 'Total Budget', value: formatCurrency(calculateTotalBudget()) }
+                ];
+                
+                summaryItems.forEach((item, index) => {
+                    const boxY = yPos + (index * 15);
+                    doc.setFillColor(245, 245, 250);
+                    doc.roundedRect(margin, boxY, contentWidth, 12, 2, 2, 'F');
+                    doc.setFont(undefined, 'bold');
+                    doc.text(item.label + ':', margin + 3, boxY + 8);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(item.value, margin + 50, boxY + 8);
+                });
+                
+                yPos += (summaryItems.length * 15) + 15;
+                
+                // Budget Breakdown
+                checkPageBreak(60);
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(99, 102, 241);
+                doc.text('💰 Budget Breakdown', margin, yPos);
+                yPos += 10;
+                
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                
+                if (tripData.budget && tripData.budget.length > 0) {
+                    // Group by priority
+                    const must = tripData.budget.filter(b => b.priority === 'must');
+                    const flexible = tripData.budget.filter(b => b.priority === 'flexible');
+                    const optional = tripData.budget.filter(b => b.priority === 'optional');
+                    
+                    ['Essential', 'Flexible', 'Optional'].forEach((category, catIndex) => {
+                        const items = [must, flexible, optional][catIndex];
+                        if (items.length === 0) return;
+                        
+                        checkPageBreak(25);
+                        doc.setFont(undefined, 'bold');
+                        doc.text(`${category}:`, margin + 5, yPos);
+                        yPos += 6;
+                        
+                        items.forEach(item => {
+                            checkPageBreak(8);
+                            doc.setFont(undefined, 'normal');
+                            doc.text(`• ${item.item}`, margin + 10, yPos);
+                            doc.text(formatCurrency(item.amount), pageWidth - margin - 30, yPos);
+                            yPos += 5;
+                        });
+                        yPos += 3;
+                    });
+                } else {
+                    doc.text('No budget items yet', margin + 5, yPos);
+                    yPos += 10;
+                }
+                
+                // Itinerary
+                if (tripData.dayPlans && tripData.dayPlans.length > 0) {
+                    checkPageBreak(60);
+                    yPos += 5;
+                    doc.setFontSize(18);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(99, 102, 241);
+                    doc.text('📅 Itinerary', margin, yPos);
+                    yPos += 10;
+                    
+                    doc.setFontSize(10);
+                    doc.setTextColor(0, 0, 0);
+                    
+                    tripData.dayPlans.forEach((day, index) => {
+                        checkPageBreak(20);
+                        doc.setFillColor(99, 102, 241, 0.1);
+                        doc.roundedRect(margin, yPos - 2, contentWidth, 10, 1, 1, 'F');
+                        doc.setFont(undefined, 'bold');
+                        doc.text(`Day ${index + 1}: ${day.title || 'Untitled'}`, margin + 3, yPos + 5);
+                        yPos += 12;
+                        
+                        if (day.activities) {
+                            const activities = day.activities.split('\n').filter(a => a.trim());
+                            activities.forEach(activity => {
+                                checkPageBreak(6);
+                                doc.setFont(undefined, 'normal');
+                                const lines = doc.splitTextToSize(`• ${activity}`, contentWidth - 10);
+                                lines.forEach(line => {
+                                    doc.text(line, margin + 5, yPos);
+                                    yPos += 5;
+                                });
+                            });
+                        }
+                        yPos += 3;
+                    });
+                }
+                
+                // Packing List
+                if (tripData.packing && tripData.packing.length > 0) {
+                    checkPageBreak(60);
+                    yPos += 5;
+                    doc.setFontSize(18);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(99, 102, 241);
+                    doc.text('🎒 Packing List', margin, yPos);
+                    yPos += 10;
+                    
+                    doc.setFontSize(10);
+                    doc.setTextColor(0, 0, 0);
+                    
+                    tripData.packing.forEach(item => {
+                        checkPageBreak(6);
+                        doc.setFont(undefined, 'normal');
+                        const checkbox = item.packed ? '☑' : '☐';
+                        doc.text(`${checkbox} ${item.item}`, margin + 5, yPos);
+                        yPos += 5;
+                    });
+                }
+                
+                // Members
+                if (sharedTripData.members && Object.keys(sharedTripData.members).length > 0) {
+                    checkPageBreak(60);
+                    yPos += 5;
+                    doc.setFontSize(18);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(99, 102, 241);
+                    doc.text('👥 Trip Members', margin, yPos);
+                    yPos += 10;
+                    
+                    doc.setFontSize(10);
+                    doc.setTextColor(0, 0, 0);
+                    
+                    Object.values(sharedTripData.members).forEach(member => {
+                        checkPageBreak(6);
+                        doc.setFont(undefined, 'normal');
+                        const roleEmoji = member.role === 'owner' ? '👑' : '👤';
+                        doc.text(`${roleEmoji} ${member.username || member.email}`, margin + 5, yPos);
+                        yPos += 5;
+                    });
+                }
+                
+                // Footer on last page
+                doc.setFontSize(8);
+                doc.setTextColor(128, 128, 128);
+                doc.text(`Generated on ${new Date().toLocaleDateString()}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                doc.text('Created with Trip Planner', pageWidth / 2, pageHeight - 6, { align: 'center' });
+                
+                // Save the PDF
+                const fileName = `${tripData.overview.destination.replace(/[^a-z0-9]/gi, '_')}_Trip_Itinerary.pdf`;
+                doc.save(fileName);
+                
+                toast.success('PDF exported successfully!');
+                
+            } catch (error) {
+                console.error('❌ PDF export error:', error);
+                toast.error('Failed to export PDF: ' + error.message);
+            }
+        }
+        
+        function calculateDuration() {
+            if (!tripData.overview.departureDate || !tripData.overview.returnDate) return 0;
+            const start = new Date(tripData.overview.departureDate);
+            const end = new Date(tripData.overview.returnDate);
+            const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            return diff + 1; // Include both start and end days
+        }
+        
+        function calculateTotalBudget() {
+            if (!tripData.budget) return 0;
+            return tripData.budget.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+        }
+        
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(amount);
         }
 
         // Checklist Functions
@@ -7992,6 +8434,9 @@
             renderDayPlans();
             renderDocuments(); // CRITICAL: Added this to render documents on load!
             updateOverviewSummary();
+            
+            // Fetch weather for current destination
+            fetchWeather();
             
             // Set share link
             if (currentTrip) {

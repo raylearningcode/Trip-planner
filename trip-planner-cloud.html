@@ -2078,17 +2078,24 @@
                             <option value="all">All Days</option>
                         </select>
                     </div>
-                    
-                    <!-- Search Radius -->
-                    <div>
-                        <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">
-                            📍 Search Radius (km)
-                        </label>
-                        <input type="number" id="mapRadius" value="5" min="1" max="50" 
-                               style="width: 100%; padding: 10px; background: var(--bg-hover); border: 1px solid var(--border); 
-                                      border-radius: 8px; color: var(--text-primary); font-size: 14px;"
-                               onchange="updateMapView()">
+                </div>
+                
+                <!-- Route Drawing -->
+                <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                    <div style="font-size: 13px; color: var(--text-tertiary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        🗺️ Route Options
                     </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 14px; 
+                                      background: var(--bg-main); border-radius: 6px; border: 1px solid var(--border);">
+                            <input type="checkbox" id="showRouteLines" onchange="updateMapView()" 
+                                   style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="color: var(--text-primary); font-size: 14px;">Show Route from Accommodations</span>
+                        </label>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="selectTwoPoints()" style="width: 100%;">
+                        📍 Calculate Distance Between 2 Points
+                    </button>
                 </div>
                 
                 <!-- Show/Hide Layers -->
@@ -2121,6 +2128,17 @@
                 <div style="display: flex; gap: 12px;">
                     <button class="btn btn-primary btn-sm" onclick="refreshMap()" style="flex: 1;">🔄 Refresh Map</button>
                     <button class="btn btn-secondary btn-sm" onclick="centerMapOnDestinations()" style="flex: 1;">🎯 Center View</button>
+                    <button class="btn btn-secondary btn-sm" onclick="clearDistanceSelection()" style="flex: 1;">✕ Clear Selection</button>
+                </div>
+            </div>
+
+            <!-- Distance Calculator Result -->
+            <div id="distanceResult" style="display: none; margin-bottom: 16px;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">📏 Distance & Route Info</div>
+                    </div>
+                    <div id="distanceContent" style="padding: 20px;"></div>
                 </div>
             </div>
 
@@ -5006,10 +5024,14 @@
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Emoji</label>
-                                        <input type="text" value="${dest.emoji || '📍'}" placeholder="📍" maxlength="2"
-                                               style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 24px; text-align: center;"
-                                               oninput="if(tripData.destinations['${type}'][${idx}]) tripData.destinations['${type}'][${idx}].emoji = this.value"
-                                               onblur="saveDataSync()">
+                                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                            ${['📍', '🏛️', '🏰', '⛩️', '🗼', '🏖️', '⛰️', '🎡', '🍜', '🏨', '🛍️', '🎭', '🎨', '⛪', '🕌'].map(e => 
+                                                `<button onclick="tripData.destinations['${type}'][${idx}].emoji = '${e}'; saveDataSync(); renderDestinations()" 
+                                                        style="padding: 6px; background: ${(dest.emoji || '📍') === e ? 'var(--primary)' : 'var(--bg-main)'}; 
+                                                               border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 18px; 
+                                                               width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">${e}</button>`
+                                            ).join('')}
+                                        </div>
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Country</label>
@@ -5564,6 +5586,11 @@
         let map = null;
         window.mapInitialized = false;
 
+        let routeLines = [];
+        let distanceSelectionMode = false;
+        let selectedPoints = [];
+        let distanceMarkers = [];
+
         function initMap() {
             if (typeof L === 'undefined') {
                 setTimeout(initMap, 100);
@@ -5652,24 +5679,141 @@
             }
         }
         
+        function selectTwoPoints() {
+            distanceSelectionMode = true;
+            selectedPoints = [];
+            clearDistanceMarkers();
+            alert('Click on 2 markers to calculate distance between them');
+        }
+        
+        function clearDistanceSelection() {
+            distanceSelectionMode = false;
+            selectedPoints = [];
+            clearDistanceMarkers();
+            document.getElementById('distanceResult').style.display = 'none';
+        }
+        
+        function clearDistanceMarkers() {
+            distanceMarkers.forEach(m => map.removeLayer(m));
+            distanceMarkers = [];
+        }
+        
+        function calculateDistance(latlng1, latlng2) {
+            // Haversine formula
+            const R = 6371; // Earth radius in km
+            const dLat = (latlng2.lat - latlng1.lat) * Math.PI / 180;
+            const dLon = (latlng2.lng - latlng1.lng) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(latlng1.lat * Math.PI / 180) * Math.cos(latlng2.lat * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        function showDistanceInfo(point1, point2) {
+            const distance = calculateDistance(point1.coords, point2.coords);
+            const distanceDiv = document.getElementById('distanceResult');
+            const contentDiv = document.getElementById('distanceContent');
+            
+            // Draw line between points
+            const line = L.polyline([point1.coords, point2.coords], {
+                color: '#6366f1',
+                weight: 3,
+                opacity: 0.7,
+                dashArray: '10, 5'
+            }).addTo(map);
+            distanceMarkers.push(line);
+            
+            const travelTime = {
+                walking: (distance / 5 * 60).toFixed(0), // 5 km/h
+                driving: (distance / 60 * 60).toFixed(0), // 60 km/h
+                transit: (distance / 40 * 60).toFixed(0) // 40 km/h
+            };
+            
+            const estimatedCost = {
+                taxi: (distance * 1.5).toFixed(2), // $1.5/km
+                uber: (distance * 1.2).toFixed(2), // $1.2/km
+                transit: '2-5' // Fixed estimate
+            };
+            
+            contentDiv.innerHTML = `
+                <div style="display: grid; gap: 20px;">
+                    <div>
+                        <h3 style="margin: 0 0 8px 0; color: var(--primary);">From: ${point1.name}</h3>
+                        <h3 style="margin: 0 0 16px 0; color: var(--secondary);">To: ${point2.name}</h3>
+                        <div style="font-size: 24px; font-weight: 600; color: var(--text-primary);">
+                            ${distance.toFixed(2)} km
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 12px 0; color: var(--text-secondary);">🚶 Travel Time Estimates</h4>
+                        <div style="display: grid; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Walking:</span>
+                                <strong>${travelTime.walking} min</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Driving:</span>
+                                <strong>${travelTime.driving} min</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Public Transit:</span>
+                                <strong>${travelTime.transit} min</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 12px 0; color: var(--text-secondary);">💰 Estimated Transport Costs</h4>
+                        <div style="display: grid; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Taxi:</span>
+                                <strong>$${estimatedCost.taxi}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Uber/Grab:</span>
+                                <strong>$${estimatedCost.uber}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Public Transit:</span>
+                                <strong>$${estimatedCost.transit}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="font-size: 12px; color: var(--text-tertiary); font-style: italic;">
+                        * Estimates based on average rates. Actual costs may vary by location and time.
+                    </div>
+                </div>
+            `;
+            
+            distanceDiv.style.display = 'block';
+        }
+        
         function updateMapView() {
             if (!map) return;
             
             const selectedCountry = document.getElementById('mapCountryFilter').value;
             const selectedDay = document.getElementById('mapDayFilter').value;
-            const radius = parseFloat(document.getElementById('mapRadius').value) || 5;
             const showDestinations = document.getElementById('showDestinations').checked;
             const showRestaurants = document.getElementById('showRestaurants').checked;
             const showAccommodation = document.getElementById('showAccommodation').checked;
+            const showRouteLines = document.getElementById('showRouteLines')?.checked || false;
             
-            // Clear existing markers
+            // Clear existing markers and lines
             map.eachLayer(layer => {
-                if (layer instanceof L.Marker) {
+                if (layer instanceof L.Marker || layer instanceof L.Polyline) {
                     map.removeLayer(layer);
                 }
             });
             
+            // Clear route lines
+            routeLines.forEach(line => map.removeLayer(line));
+            routeLines = [];
+            
             const markers = [];
+            const allCoords = {};
             let visibleCount = 0;
             
             // Get locations from selected day if filtering by day
@@ -5678,6 +5822,20 @@
                 tripData.dayPlans[selectedDay].activities.forEach(act => {
                     if (act.location) {
                         dayLocations.add(act.location.toLowerCase());
+                    }
+                });
+            }
+            
+            // Collect accommodation coordinates first
+            const accommodationCoords = [];
+            if (showAccommodation && tripData.bookings) {
+                tripData.bookings.filter(b => b.type === 'Hotel' && b.confirmation).forEach(booking => {
+                    const dest = findDestinationByName(booking.name);
+                    if (dest && dest.mapsLink) {
+                        const coords = extractCoordsFromMapsLink(dest.mapsLink);
+                        if (coords) {
+                            accommodationCoords.push({coords, name: booking.name, dest});
+                        }
                     }
                 });
             }
@@ -5707,6 +5865,9 @@
                                     })
                                 }).addTo(map);
                                 
+                                const locationKey = `${type}-${dest.city}-${dest.placeName}`;
+                                allCoords[locationKey] = {coords, name: `${emoji} ${dest.placeName || dest.city}`};
+                                
                                 marker.bindPopup(`
                                     <div style="min-width: 200px;">
                                         <strong style="font-size: 16px; color: var(--primary);">${emoji} ${dest.city || 'Unknown'}</strong><br>
@@ -5715,6 +5876,11 @@
                                         <a href="${dest.mapsLink}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>
                                     </div>
                                 `);
+                                
+                                // Add click handler for distance selection
+                                if (distanceSelectionMode) {
+                                    marker.on('click', () => handleMarkerClick({coords, name: `${emoji} ${dest.placeName || dest.city}`}));
+                                }
                                 
                                 markers.push(coords);
                                 visibleCount++;
@@ -5729,7 +5895,6 @@
                 (tripData.destinations.restaurants || []).forEach(dest => {
                     if (selectedCountry !== 'all' && dest.country !== selectedCountry) return;
                     
-                    // Filter by day if selected
                     if (selectedDay !== 'all') {
                         const matchDay = dayLocations.has(dest.city?.toLowerCase()) || 
                                        dayLocations.has(dest.placeName?.toLowerCase());
@@ -5748,6 +5913,9 @@
                                 })
                             }).addTo(map);
                             
+                            const locationKey = `restaurant-${dest.placeName}`;
+                            allCoords[locationKey] = {coords, name: `${emoji} ${dest.placeName || dest.city}`};
+                            
                             marker.bindPopup(`
                                 <div style="min-width: 200px;">
                                     <strong style="font-size: 16px; color: var(--secondary);">${emoji} ${dest.placeName || dest.city || 'Restaurant'}</strong><br>
@@ -5757,6 +5925,10 @@
                                 </div>
                             `);
                             
+                            if (distanceSelectionMode) {
+                                marker.on('click', () => handleMarkerClick({coords, name: `${emoji} ${dest.placeName || dest.city}`}));
+                            }
+                            
                             markers.push(coords);
                             visibleCount++;
                         }
@@ -5764,36 +5936,57 @@
                 });
             }
             
-            // Plot accommodation (from bookings)
-            if (showAccommodation && tripData.bookings) {
-                tripData.bookings.filter(b => b.type === 'Hotel' && b.confirmation).forEach(booking => {
-                    // Try to find matching destination with coords
-                    const dest = findDestinationByName(booking.name);
-                    if (dest && dest.mapsLink) {
-                        const coords = extractCoordsFromMapsLink(dest.mapsLink);
-                        if (coords) {
-                            const emoji = dest.emoji || '🏨';
-                            const marker = L.marker(coords, {
-                                icon: L.divIcon({
-                                    html: `<div style="font-size: 28px;">${emoji}</div>`,
-                                    className: 'custom-marker',
-                                    iconSize: [35, 35]
-                                })
-                            }).addTo(map);
-                            
-                            marker.bindPopup(`
-                                <div style="min-width: 200px;">
-                                    <strong style="font-size: 16px; color: var(--success);">${emoji} ${booking.name}</strong><br>
-                                    <div style="margin: 8px 0; color: var(--text-secondary);">Confirmation: ${booking.confirmation}</div>
-                                    <div style="font-size: 13px; margin: 4px 0;">Check-in: ${booking.datetime?.split('T')[0] || 'TBD'}</div>
-                                    ${dest.mapsLink ? `<a href="${dest.mapsLink}" target="_blank" style="color: var(--success); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>` : ''}
-                                </div>
-                            `);
-                            
-                            markers.push(coords);
-                            visibleCount++;
-                        }
+            // Plot accommodation
+            if (showAccommodation) {
+                accommodationCoords.forEach(({coords, name, dest}) => {
+                    const emoji = dest.emoji || '🏨';
+                    const marker = L.marker(coords, {
+                        icon: L.divIcon({
+                            html: `<div style="font-size: 28px;">${emoji}</div>`,
+                            className: 'custom-marker',
+                            iconSize: [35, 35]
+                        })
+                    }).addTo(map);
+                    
+                    const locationKey = `hotel-${name}`;
+                    allCoords[locationKey] = {coords, name: `${emoji} ${name}`};
+                    
+                    const booking = tripData.bookings.find(b => b.name === name);
+                    marker.bindPopup(`
+                        <div style="min-width: 200px;">
+                            <strong style="font-size: 16px; color: var(--success);">${emoji} ${name}</strong><br>
+                            <div style="margin: 8px 0; color: var(--text-secondary);">Confirmation: ${booking?.confirmation || ''}</div>
+                            <div style="font-size: 13px; margin: 4px 0;">Check-in: ${booking?.datetime?.split('T')[0] || 'TBD'}</div>
+                            ${dest.mapsLink ? `<a href="${dest.mapsLink}" target="_blank" style="color: var(--success); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>` : ''}
+                        </div>
+                    `);
+                    
+                    if (distanceSelectionMode) {
+                        marker.on('click', () => handleMarkerClick({coords, name: `${emoji} ${name}`}));
                     }
+                    
+                    markers.push(coords);
+                    visibleCount++;
+                });
+            }
+            
+            // Draw route lines from accommodations to all other locations
+            if (showRouteLines && accommodationCoords.length > 0) {
+                // Use first accommodation as starting point
+                const startPoint = accommodationCoords[0].coords;
+                
+                Object.values(allCoords).forEach(location => {
+                    // Don't draw line to itself
+                    if (location.coords[0] === startPoint[0] && location.coords[1] === startPoint[1]) return;
+                    
+                    const line = L.polyline([startPoint, location.coords], {
+                        color: '#6366f1',
+                        weight: 2,
+                        opacity: 0.4,
+                        dashArray: '5, 10'
+                    }).addTo(map);
+                    
+                    routeLines.push(line);
                 });
             }
             
@@ -5803,6 +5996,27 @@
             // Fit bounds to show all markers
             if (markers.length > 0) {
                 map.fitBounds(markers);
+            }
+        }
+        
+        function handleMarkerClick(point) {
+            if (!distanceSelectionMode) return;
+            
+            selectedPoints.push(point);
+            
+            // Add temporary marker
+            const tempMarker = L.circleMarker(point.coords, {
+                radius: 10,
+                fillColor: '#6366f1',
+                color: '#fff',
+                weight: 2,
+                fillOpacity: 0.8
+            }).addTo(map);
+            distanceMarkers.push(tempMarker);
+            
+            if (selectedPoints.length === 2) {
+                distanceSelectionMode = false;
+                showDistanceInfo(selectedPoints[0], selectedPoints[1]);
             }
         }
         

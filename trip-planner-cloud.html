@@ -5831,7 +5831,7 @@
             return R * c;
         }
         
-        function showDistanceInfo(point1, point2) {
+        async function showDistanceInfo(point1, point2) {
             const distance = calculateDistance(point1.coords, point2.coords);
             const distanceDiv = document.getElementById('distanceResult');
             const contentDiv = document.getElementById('distanceContent');
@@ -5849,81 +5849,229 @@
             }).addTo(map);
             distanceMarkers.push(line);
             
+            // Show loading state
+            contentDiv.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🗺️</div>
+                    <div style="color: var(--text-secondary);">Fetching real route data...</div>
+                </div>
+            `;
+            distanceDiv.style.display = 'block';
+            
+            // Fetch real route data from OpenRouteService
+            try {
+                const routes = await Promise.all([
+                    fetchRealRoute(point1.coords, point2.coords, 'driving-car'),
+                    fetchRealRoute(point1.coords, point2.coords, 'foot-walking'),
+                    fetchRealRoute(point1.coords, point2.coords, 'cycling-regular')
+                ]);
+                
+                const [drivingRoute, walkingRoute, cyclingRoute] = routes;
+                
+                // Use real data if available, otherwise fall back to estimates
+                const travelTime = {
+                    walking: walkingRoute ? Math.round(walkingRoute.duration / 60) : Math.round(distance / 5 * 60),
+                    driving: drivingRoute ? Math.round(drivingRoute.duration / 60) : Math.round(distance / 60 * 60),
+                    cycling: cyclingRoute ? Math.round(cyclingRoute.duration / 60) : Math.round(distance / 15 * 60)
+                };
+                
+                const actualDistance = drivingRoute ? (drivingRoute.distance / 1000).toFixed(2) : distance.toFixed(2);
+                
+                const estimatedCost = {
+                    taxi: (actualDistance * 1.5).toFixed(2),
+                    uber: (actualDistance * 1.2).toFixed(2),
+                    transit: '2-5'
+                };
+                
+                // Transportation recommendations based on distance
+                let recommendations = [];
+                if (actualDistance < 2) {
+                    recommendations = [
+                        {icon: '🚶', name: 'Walking', reason: 'Short distance, enjoy the scenery', time: travelTime.walking},
+                        {icon: '🚴', name: 'Bike/Scooter', reason: 'Quick and eco-friendly', time: travelTime.cycling},
+                        {icon: '🚕', name: 'Taxi', reason: 'If carrying luggage', time: travelTime.driving}
+                    ];
+                } else if (actualDistance < 10) {
+                    recommendations = [
+                        {icon: '🚇', name: 'Public Transit', reason: 'Most economical option', time: Math.round(actualDistance / 40 * 60)},
+                        {icon: '🚗', name: 'Uber/Grab', reason: 'Door-to-door convenience', time: travelTime.driving},
+                        {icon: '🚴', name: 'Bike', reason: 'Healthy and flexible', time: travelTime.cycling}
+                    ];
+                } else {
+                    recommendations = [
+                        {icon: '🚗', name: 'Car/Taxi', reason: 'Fastest option', time: travelTime.driving},
+                        {icon: '🚇', name: 'Train/Bus', reason: 'Most affordable', time: Math.round(actualDistance / 40 * 60)},
+                        {icon: '✈️', name: 'Flight', reason: 'Consider if >200km', time: '~2 hrs'}
+                    ];
+                }
+                
+                contentDiv.innerHTML = `
+                    <div style="display: grid; gap: 20px;">
+                        <div>
+                            <h3 style="margin: 0 0 8px 0; color: var(--primary); font-size: 15px;">From: ${point1.name}</h3>
+                            <h3 style="margin: 0 0 16px 0; color: var(--secondary); font-size: 15px;">To: ${point2.name}</h3>
+                            <div style="font-size: 32px; font-weight: 700; color: var(--text-primary); 
+                                        background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1));
+                                        padding: 20px; border-radius: 12px; text-align: center;
+                                        border: 2px solid var(--primary);">
+                                📏 ${actualDistance} km
+                            </div>
+                            ${drivingRoute ? '<div style="text-align: center; margin-top: 8px; font-size: 12px; color: var(--success);">✓ Real route data</div>' : '<div style="text-align: center; margin-top: 8px; font-size: 12px; color: var(--text-tertiary);">⚠️ Estimated (straight line)</div>'}
+                        </div>
+                        
+                        <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px;">
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                🎯 Recommended Transport
+                            </h4>
+                            <div style="display: grid; gap: 10px;">
+                                ${recommendations.map((rec, idx) => `
+                                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px; 
+                                                background: ${idx === 0 ? 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))' : 'var(--bg-main)'}; 
+                                                border-radius: 6px; border-left: 3px solid ${idx === 0 ? 'var(--primary)' : 'transparent'};">
+                                        <div style="font-size: 28px;">${rec.icon}</div>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${rec.name}</div>
+                                            <div style="font-size: 12px; color: var(--text-secondary);">${rec.reason}</div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-weight: 600; color: var(--primary);">${rec.time} min</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px;">
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                ⏱️ Travel Time Details
+                            </h4>
+                            <div style="display: grid; gap: 10px;">
+                                <div style="display: flex; justify-content: space-between; padding: 12px; background: var(--bg-main); border-radius: 6px;">
+                                    <span style="color: var(--text-secondary);">🚶 Walking:</span>
+                                    <strong style="color: var(--text-primary);">${travelTime.walking} min</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 12px; background: var(--bg-main); border-radius: 6px;">
+                                    <span style="color: var(--text-secondary);">🚴 Cycling:</span>
+                                    <strong style="color: var(--text-primary);">${travelTime.cycling} min</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 12px; background: var(--bg-main); border-radius: 6px;">
+                                    <span style="color: var(--text-secondary);">🚗 Driving:</span>
+                                    <strong style="color: var(--text-primary);">${travelTime.driving} min</strong>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px;">
+                            <h4 style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                💰 Estimated Costs
+                            </h4>
+                            <div style="display: grid; gap: 10px;">
+                                <div style="display: flex; justify-content: space-between; padding: 12px; background: var(--bg-main); border-radius: 6px;">
+                                    <span style="color: var(--text-secondary);">🚕 Taxi:</span>
+                                    <strong style="color: var(--warning);">$${estimatedCost.taxi}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 12px; background: var(--bg-main); border-radius: 6px;">
+                                    <span style="color: var(--text-secondary);">🚗 Uber/Grab:</span>
+                                    <strong style="color: var(--success);">$${estimatedCost.uber}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 12px; background: var(--bg-main); border-radius: 6px;">
+                                    <span style="color: var(--text-secondary);">🚇 Public Transit:</span>
+                                    <strong style="color: var(--primary);">$${estimatedCost.transit}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="font-size: 12px; color: var(--text-tertiary); font-style: italic; padding: 12px; background: rgba(255,193,7,0.1); border-radius: 6px; border-left: 3px solid var(--warning);">
+                            💡 <strong>Tip:</strong> ${actualDistance < 5 ? 'Consider walking or cycling to experience local culture!' : 'Book transport in advance during peak hours for better rates.'}
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error fetching route data:', error);
+                // Fall back to estimates if API fails
+                displayEstimatedRoute(point1, point2, distance, contentDiv);
+            }
+            
+            distanceDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            
+            // Remove selection banner
+            if (selectionOverlay) selectionOverlay.style.display = 'none';
+        }
+        
+        async function fetchRealRoute(start, end, profile) {
+            // OpenRouteService API (free tier: 2000 requests/day)
+            const apiKey = '5b3ce3597851110001cf6248a8661cdfd1e0406b9c1ba41aea10a3ca';
+            const url = `https://api.openrouteservice.org/v2/directions/${profile}?api_key=${apiKey}&start=${start[1]},${start[0]}&end=${end[1]},${end[0]}`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('API request failed');
+                
+                const data = await response.json();
+                if (data.features && data.features[0]) {
+                    const route = data.features[0].properties.segments[0];
+                    return {
+                        distance: route.distance, // in meters
+                        duration: route.duration  // in seconds
+                    };
+                }
+            } catch (error) {
+                console.warn(`Failed to fetch ${profile} route:`, error);
+                return null;
+            }
+        }
+        
+        function displayEstimatedRoute(point1, point2, distance, contentDiv) {
             const travelTime = {
-                walking: (distance / 5 * 60).toFixed(0), // 5 km/h
-                driving: (distance / 60 * 60).toFixed(0), // 60 km/h
-                transit: (distance / 40 * 60).toFixed(0) // 40 km/h
+                walking: Math.round(distance / 5 * 60),
+                driving: Math.round(distance / 60 * 60),
+                cycling: Math.round(distance / 15 * 60)
             };
             
             const estimatedCost = {
-                taxi: (distance * 1.5).toFixed(2), // $1.5/km
-                uber: (distance * 1.2).toFixed(2), // $1.2/km
-                transit: '2-5' // Fixed estimate
+                taxi: (distance * 1.5).toFixed(2),
+                uber: (distance * 1.2).toFixed(2),
+                transit: '2-5'
             };
             
             contentDiv.innerHTML = `
                 <div style="display: grid; gap: 20px;">
                     <div>
-                        <h3 style="margin: 0 0 8px 0; color: var(--primary);">From: ${point1.name}</h3>
-                        <h3 style="margin: 0 0 16px 0; color: var(--secondary);">To: ${point2.name}</h3>
-                        <div style="font-size: 28px; font-weight: 700; color: var(--text-primary); 
-                                    background: var(--bg-hover); padding: 16px; border-radius: 8px; text-align: center;">
-                            ${distance.toFixed(2)} km
+                        <h3 style="margin: 0 0 8px 0; color: var(--primary); font-size: 15px;">From: ${point1.name}</h3>
+                        <h3 style="margin: 0 0 16px 0; color: var(--secondary); font-size: 15px;">To: ${point2.name}</h3>
+                        <div style="font-size: 32px; font-weight: 700; color: var(--text-primary); 
+                                    background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1));
+                                    padding: 20px; border-radius: 12px; text-align: center;
+                                    border: 2px solid var(--primary);">
+                            📏 ${distance.toFixed(2)} km
                         </div>
+                        <div style="text-align: center; margin-top: 8px; font-size: 12px; color: var(--warning);">⚠️ Estimated (straight line distance)</div>
                     </div>
                     
                     <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px;">
-                        <h4 style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
-                            🚶 Travel Time Estimates
-                        </h4>
-                        <div style="display: grid; gap: 10px;">
-                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
-                                <span style="color: var(--text-secondary);">🚶 Walking:</span>
+                        <h4 style="margin: 0 0 12px 0; color: var(--text-secondary);">⏱️ Estimated Travel Times</h4>
+                        <div style="display: grid; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>🚶 Walking:</span>
                                 <strong>${travelTime.walking} min</strong>
                             </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
-                                <span style="color: var(--text-secondary);">🚗 Driving:</span>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>🚴 Cycling:</span>
+                                <strong>${travelTime.cycling} min</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>🚗 Driving:</span>
                                 <strong>${travelTime.driving} min</strong>
                             </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
-                                <span style="color: var(--text-secondary);">🚇 Transit:</span>
-                                <strong>${travelTime.transit} min</strong>
-                            </div>
                         </div>
                     </div>
                     
-                    <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px;">
-                        <h4 style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
-                            💰 Estimated Transport Costs
-                        </h4>
-                        <div style="display: grid; gap: 10px;">
-                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
-                                <span style="color: var(--text-secondary);">🚕 Taxi:</span>
-                                <strong>$${estimatedCost.taxi}</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
-                                <span style="color: var(--text-secondary);">🚗 Uber/Grab:</span>
-                                <strong>$${estimatedCost.uber}</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
-                                <span style="color: var(--text-secondary);">🚇 Transit:</span>
-                                <strong>$${estimatedCost.transit}</strong>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="font-size: 12px; color: var(--text-tertiary); font-style: italic; text-align: center;">
-                        * Estimates based on average rates. Actual costs may vary.
+                    <div style="font-size: 12px; color: var(--text-tertiary); font-style: italic;">
+                        ⚠️ These are rough estimates. Actual travel times vary by traffic and route.
                     </div>
                 </div>
             `;
-            
-            distanceDiv.style.display = 'block';
-            
-            // Hide selection overlay
-            if (selectionOverlay) {
-                selectionOverlay.style.display = 'none';
-            }
         }
         
         function updateMapView() {
@@ -5961,18 +6109,32 @@
                 });
             }
             
-            // Collect accommodation coordinates first
+            // Collect accommodation coordinates from destinations (not bookings)
             const accommodationCoords = [];
-            if (showAccommodation && tripData.bookings) {
-                tripData.bookings.filter(b => b.type === 'Hotel' && b.confirmation).forEach(booking => {
-                    const dest = findDestinationByName(booking.name);
-                    if (dest && dest.mapsLink) {
-                        const coords = extractCoordsFromMapsLink(dest.mapsLink);
-                        if (coords) {
-                            accommodationCoords.push({coords, name: booking.name, dest});
+            if (showAccommodation) {
+                // Just use accommodation destinations directly
+                ['main', 'optional', 'other'].forEach(type => {
+                    (tripData.destinations[type] || []).forEach(dest => {
+                        // Check if it's a hotel/accommodation based on emoji or name
+                        const isHotel = (dest.emoji && ['🏨', '🏩', '🛏️'].includes(dest.emoji)) || 
+                                       dest.placeName?.toLowerCase().includes('hotel') ||
+                                       dest.placeName?.toLowerCase().includes('hostel') ||
+                                       dest.placeName?.toLowerCase().includes('accommodation');
+                        
+                        if (isHotel && dest.mapsLink) {
+                            const coords = extractCoordsFromMapsLink(dest.mapsLink);
+                            if (coords) {
+                                accommodationCoords.push({
+                                    coords, 
+                                    name: dest.placeName || dest.city || 'Accommodation',
+                                    dest
+                                });
+                            }
                         }
-                    }
+                    });
                 });
+                
+                console.log(`Found ${accommodationCoords.length} accommodations from destinations`);
             }
             
             // Plot main/optional/other destinations

@@ -4778,6 +4778,8 @@
                 
                 // Create a safe callback that closes modal FIRST, then resolves
                 window.selectCategory = (category) => {
+                    console.log('📁 Category button clicked:', category);
+                    
                     // Step 1: Close modal
                     closeModal();
                     
@@ -4792,8 +4794,8 @@
                         // Step 4: Resolve promise
                         resolve(category);
                         
-                        // Step 5: Cleanup
-                        delete window.selectCategory;
+                        // DON'T delete window.selectCategory here!
+                        // It will be replaced on next call to selectDocumentCategory()
                         
                         console.log('✅ Category selected, scroll restored');
                     }, 100);

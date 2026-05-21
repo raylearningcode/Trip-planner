@@ -594,6 +594,17 @@
         .leaflet-popup-tip {
             background: var(--bg-card) !important;
         }
+        
+        @keyframes slideDown {
+            from {
+                transform: translate(-50%, -20px);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
+        }
 
         /* Page Transitions */
         .page {
@@ -4953,6 +4964,23 @@
             setTimeout(() => { isLocalUpdate = false; }, 500);
         }
 
+        function getEmojiName(emoji) {
+            const names = {
+                '📍': 'Location Pin', '🏛️': 'Museum/Monument', '🏰': 'Castle/Palace', '⛩️': 'Temple/Shrine',
+                '🗼': 'Tower/Landmark', '⛪': 'Church', '🕌': 'Mosque', '🏟️': 'Stadium/Arena',
+                '🏖️': 'Beach', '⛰️': 'Mountain', '🌋': 'Volcano', '🏞️': 'National Park',
+                '🌊': 'Ocean/Sea', '🏜️': 'Desert', '🌲': 'Forest', '🎡': 'Theme Park',
+                '🎢': 'Roller Coaster', '🎭': 'Theater/Show', '🎨': 'Art Gallery', '🎪': 'Circus/Festival',
+                '🎬': 'Cinema', '🎤': 'Karaoke/Music', '🍜': 'Restaurant', '🍕': 'Pizza',
+                '🍣': 'Sushi', '☕': 'Cafe/Coffee', '🍺': 'Bar/Pub', '🍰': 'Bakery/Dessert',
+                '🥘': 'Local Cuisine', '🏨': 'Hotel', '🏠': 'House/Villa', '🏡': 'Cottage/Cabin',
+                '⛺': 'Camping', '🛍️': 'Shopping Mall', '🏪': 'Store/Shop', '🎁': 'Gift Shop',
+                '💎': 'Luxury Store', '✈️': 'Airport', '🚂': 'Train Station', '🚌': 'Bus Station',
+                '🚢': 'Port/Harbor', '🚕': 'Taxi Stand'
+            };
+            return names[emoji] || 'Custom';
+        }
+
         function renderDestinations() {
             ['main', 'optional', 'other', 'restaurants'].forEach(type => {
                 const container = document.getElementById(type + 'DestContainer');
@@ -5023,15 +5051,67 @@
                             <div id="destContent_${type}_${idx}" style="display: ${isExpanded ? 'block' : 'none'}; padding: 20px;">
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                                     <div>
-                                        <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Emoji</label>
-                                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                                            ${['📍', '🏛️', '🏰', '⛩️', '🗼', '🏖️', '⛰️', '🎡', '🍜', '🏨', '🛍️', '🎭', '🎨', '⛪', '🕌'].map(e => 
-                                                `<button onclick="tripData.destinations['${type}'][${idx}].emoji = '${e}'; saveDataSync(); renderDestinations()" 
-                                                        style="padding: 6px; background: ${(dest.emoji || '📍') === e ? 'var(--primary)' : 'var(--bg-main)'}; 
-                                                               border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 18px; 
-                                                               width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">${e}</button>`
-                                            ).join('')}
-                                        </div>
+                                        <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Icon</label>
+                                        <select onchange="tripData.destinations['${type}'][${idx}].emoji = this.value.split(' ')[0]; saveDataSync(); renderDestinations()" 
+                                                style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 14px;">
+                                            <option value="${dest.emoji || '📍'}" selected>${dest.emoji || '📍'} ${getEmojiName(dest.emoji || '📍')}</option>
+                                            <optgroup label="Places">
+                                                <option value="📍 Pin">📍 Location Pin</option>
+                                                <option value="🏛️ Museum">🏛️ Museum/Monument</option>
+                                                <option value="🏰 Castle">🏰 Castle/Palace</option>
+                                                <option value="⛩️ Temple">⛩️ Temple/Shrine</option>
+                                                <option value="🗼 Tower">🗼 Tower/Landmark</option>
+                                                <option value="⛪ Church">⛪ Church</option>
+                                                <option value="🕌 Mosque">🕌 Mosque</option>
+                                                <option value="🏟️ Stadium">🏟️ Stadium/Arena</option>
+                                            </optgroup>
+                                            <optgroup label="Nature">
+                                                <option value="🏖️ Beach">🏖️ Beach</option>
+                                                <option value="⛰️ Mountain">⛰️ Mountain</option>
+                                                <option value="🌋 Volcano">🌋 Volcano</option>
+                                                <option value="🏞️ Park">🏞️ National Park</option>
+                                                <option value="🌊 Ocean">🌊 Ocean/Sea</option>
+                                                <option value="🏜️ Desert">🏜️ Desert</option>
+                                                <option value="🌲 Forest">🌲 Forest</option>
+                                            </optgroup>
+                                            <optgroup label="Activities">
+                                                <option value="🎡 Park">🎡 Theme Park</option>
+                                                <option value="🎢 Ride">🎢 Roller Coaster</option>
+                                                <option value="🎭 Theater">🎭 Theater/Show</option>
+                                                <option value="🎨 Art">🎨 Art Gallery</option>
+                                                <option value="🎪 Circus">🎪 Circus/Festival</option>
+                                                <option value="🎬 Cinema">🎬 Cinema</option>
+                                                <option value="🎤 Karaoke">🎤 Karaoke/Music</option>
+                                            </optgroup>
+                                            <optgroup label="Food & Drink">
+                                                <option value="🍜 Restaurant">🍜 Restaurant</option>
+                                                <option value="🍕 Pizza">🍕 Pizza</option>
+                                                <option value="🍣 Sushi">🍣 Sushi</option>
+                                                <option value="☕ Cafe">☕ Cafe/Coffee</option>
+                                                <option value="🍺 Bar">🍺 Bar/Pub</option>
+                                                <option value="🍰 Bakery">🍰 Bakery/Dessert</option>
+                                                <option value="🥘 Local">🥘 Local Cuisine</option>
+                                            </optgroup>
+                                            <optgroup label="Accommodation">
+                                                <option value="🏨 Hotel">🏨 Hotel</option>
+                                                <option value="🏠 House">🏠 House/Villa</option>
+                                                <option value="🏡 Cottage">🏡 Cottage/Cabin</option>
+                                                <option value="⛺ Camp">⛺ Camping</option>
+                                            </optgroup>
+                                            <optgroup label="Shopping">
+                                                <option value="🛍️ Shopping">🛍️ Shopping Mall</option>
+                                                <option value="🏪 Store">🏪 Store/Shop</option>
+                                                <option value="🎁 Gift">🎁 Gift Shop</option>
+                                                <option value="💎 Luxury">💎 Luxury Store</option>
+                                            </optgroup>
+                                            <optgroup label="Transport">
+                                                <option value="✈️ Airport">✈️ Airport</option>
+                                                <option value="🚂 Train">🚂 Train Station</option>
+                                                <option value="🚌 Bus">🚌 Bus Station</option>
+                                                <option value="🚢 Port">🚢 Port/Harbor</option>
+                                                <option value="🚕 Taxi">🚕 Taxi Stand</option>
+                                            </optgroup>
+                                        </select>
                                     </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Country</label>
@@ -5590,6 +5670,7 @@
         let distanceSelectionMode = false;
         let selectedPoints = [];
         let distanceMarkers = [];
+        let selectionOverlay = null;
 
         function initMap() {
             if (typeof L === 'undefined') {
@@ -5683,7 +5764,43 @@
             distanceSelectionMode = true;
             selectedPoints = [];
             clearDistanceMarkers();
-            alert('Click on 2 markers to calculate distance between them');
+            
+            // Show overlay
+            if (!selectionOverlay) {
+                selectionOverlay = document.createElement('div');
+                selectionOverlay.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+                    color: white;
+                    padding: 20px 30px;
+                    border-radius: 12px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+                    z-index: 10000;
+                    font-size: 16px;
+                    font-weight: 600;
+                    text-align: center;
+                    animation: slideDown 0.3s ease;
+                `;
+                document.body.appendChild(selectionOverlay);
+            }
+            selectionOverlay.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 32px;">📍</div>
+                    <div>
+                        <div style="font-size: 18px; margin-bottom: 4px;">Select 2 points on the map</div>
+                        <div style="font-size: 14px; opacity: 0.9;">Click any markers to calculate distance</div>
+                    </div>
+                    <button onclick="clearDistanceSelection()" 
+                            style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; 
+                                   border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        Cancel
+                    </button>
+                </div>
+            `;
+            selectionOverlay.style.display = 'block';
         }
         
         function clearDistanceSelection() {
@@ -5691,6 +5808,9 @@
             selectedPoints = [];
             clearDistanceMarkers();
             document.getElementById('distanceResult').style.display = 'none';
+            if (selectionOverlay) {
+                selectionOverlay.style.display = 'none';
+            }
         }
         
         function clearDistanceMarkers() {
@@ -5701,10 +5821,10 @@
         function calculateDistance(latlng1, latlng2) {
             // Haversine formula
             const R = 6371; // Earth radius in km
-            const dLat = (latlng2.lat - latlng1.lat) * Math.PI / 180;
-            const dLon = (latlng2.lng - latlng1.lng) * Math.PI / 180;
+            const dLat = (latlng2[0] - latlng1[0]) * Math.PI / 180;
+            const dLon = (latlng2[1] - latlng1[1]) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(latlng1.lat * Math.PI / 180) * Math.cos(latlng2.lat * Math.PI / 180) *
+                      Math.cos(latlng1[0] * Math.PI / 180) * Math.cos(latlng2[0] * Math.PI / 180) *
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             return R * c;
@@ -5718,8 +5838,8 @@
             // Draw line between points
             const line = L.polyline([point1.coords, point2.coords], {
                 color: '#6366f1',
-                weight: 3,
-                opacity: 0.7,
+                weight: 4,
+                opacity: 0.8,
                 dashArray: '10, 5'
             }).addTo(map);
             distanceMarkers.push(line);
@@ -5741,54 +5861,64 @@
                     <div>
                         <h3 style="margin: 0 0 8px 0; color: var(--primary);">From: ${point1.name}</h3>
                         <h3 style="margin: 0 0 16px 0; color: var(--secondary);">To: ${point2.name}</h3>
-                        <div style="font-size: 24px; font-weight: 600; color: var(--text-primary);">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--text-primary); 
+                                    background: var(--bg-hover); padding: 16px; border-radius: 8px; text-align: center;">
                             ${distance.toFixed(2)} km
                         </div>
                     </div>
                     
                     <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px;">
-                        <h4 style="margin: 0 0 12px 0; color: var(--text-secondary);">🚶 Travel Time Estimates</h4>
-                        <div style="display: grid; gap: 8px;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Walking:</span>
+                        <h4 style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            🚶 Travel Time Estimates
+                        </h4>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
+                                <span style="color: var(--text-secondary);">🚶 Walking:</span>
                                 <strong>${travelTime.walking} min</strong>
                             </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Driving:</span>
+                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
+                                <span style="color: var(--text-secondary);">🚗 Driving:</span>
                                 <strong>${travelTime.driving} min</strong>
                             </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Public Transit:</span>
+                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
+                                <span style="color: var(--text-secondary);">🚇 Transit:</span>
                                 <strong>${travelTime.transit} min</strong>
                             </div>
                         </div>
                     </div>
                     
                     <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px;">
-                        <h4 style="margin: 0 0 12px 0; color: var(--text-secondary);">💰 Estimated Transport Costs</h4>
-                        <div style="display: grid; gap: 8px;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Taxi:</span>
+                        <h4 style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            💰 Estimated Transport Costs
+                        </h4>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
+                                <span style="color: var(--text-secondary);">🚕 Taxi:</span>
                                 <strong>$${estimatedCost.taxi}</strong>
                             </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Uber/Grab:</span>
+                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
+                                <span style="color: var(--text-secondary);">🚗 Uber/Grab:</span>
                                 <strong>$${estimatedCost.uber}</strong>
                             </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>Public Transit:</span>
+                            <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-main); border-radius: 6px;">
+                                <span style="color: var(--text-secondary);">🚇 Transit:</span>
                                 <strong>$${estimatedCost.transit}</strong>
                             </div>
                         </div>
                     </div>
                     
-                    <div style="font-size: 12px; color: var(--text-tertiary); font-style: italic;">
-                        * Estimates based on average rates. Actual costs may vary by location and time.
+                    <div style="font-size: 12px; color: var(--text-tertiary); font-style: italic; text-align: center;">
+                        * Estimates based on average rates. Actual costs may vary.
                     </div>
                 </div>
             `;
             
             distanceDiv.style.display = 'block';
+            
+            // Hide selection overlay
+            if (selectionOverlay) {
+                selectionOverlay.style.display = 'none';
+            }
         }
         
         function updateMapView() {

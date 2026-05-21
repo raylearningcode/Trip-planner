@@ -2067,6 +2067,18 @@
                         </select>
                     </div>
                     
+                    <!-- Day Filter -->
+                    <div>
+                        <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">
+                            📅 View by Day
+                        </label>
+                        <select id="mapDayFilter" onchange="updateMapView()" 
+                                style="width: 100%; padding: 10px; background: var(--bg-hover); border: 1px solid var(--border); 
+                                       border-radius: 8px; color: var(--text-primary); font-size: 14px;">
+                            <option value="all">All Days</option>
+                        </select>
+                    </div>
+                    
                     <!-- Search Radius -->
                     <div>
                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -4906,10 +4918,21 @@
         }
 
         function addDestination(type) {
+            isLocalUpdate = true;
             if (!tripData.destinations[type]) tripData.destinations[type] = [];
-            tripData.destinations[type].push({ country: '', city: '', placeName: '', mapsLink: '', highlights: '', notes: '', expanded: true });
+            tripData.destinations[type].push({ 
+                country: '', 
+                city: '', 
+                placeName: '', 
+                mapsLink: '', 
+                emoji: '📍',
+                highlights: '', 
+                notes: '', 
+                expanded: true 
+            });
             renderDestinations();
             saveData();
+            setTimeout(() => { isLocalUpdate = false; }, 500);
         }
 
         function renderDestinations() {
@@ -4981,6 +5004,13 @@
                             </div>
                             <div id="destContent_${type}_${idx}" style="display: ${isExpanded ? 'block' : 'none'}; padding: 20px;">
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                    <div>
+                                        <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Emoji</label>
+                                        <input type="text" value="${dest.emoji || '📍'}" placeholder="📍" maxlength="2"
+                                               style="width: 100%; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 24px; text-align: center;"
+                                               oninput="if(tripData.destinations['${type}'][${idx}]) tripData.destinations['${type}'][${idx}].emoji = this.value"
+                                               onblur="saveDataSync()">
+                                    </div>
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Country</label>
                                         <input type="text" value="${dest.country || ''}" placeholder="Germany" 
@@ -5551,8 +5581,9 @@
                 window.mapInitialized = true;
             }
             
-            // Populate country selector
+            // Populate selectors
             populateCountrySelector();
+            populateDaySelector();
             
             // Plot destinations after map loads
             updateMapView();
@@ -5579,11 +5610,29 @@
             
             select.value = currentValue;
         }
+        
+        function populateDaySelector() {
+            const select = document.getElementById('mapDayFilter');
+            const currentValue = select.value;
+            select.innerHTML = '<option value="all">All Days</option>';
+            
+            if (tripData.dayPlans && tripData.dayPlans.length > 0) {
+                tripData.dayPlans.forEach((day, idx) => {
+                    const option = document.createElement('option');
+                    option.value = idx;
+                    option.textContent = `Day ${day.day} - ${day.date || 'No date'}`;
+                    select.appendChild(option);
+                });
+            }
+            
+            select.value = currentValue;
+        }
 
         function refreshMap() {
             if (map) {
                 map.invalidateSize();
                 populateCountrySelector();
+                populateDaySelector();
                 updateMapView();
             }
         }
@@ -5607,6 +5656,7 @@
             if (!map) return;
             
             const selectedCountry = document.getElementById('mapCountryFilter').value;
+            const selectedDay = document.getElementById('mapDayFilter').value;
             const radius = parseFloat(document.getElementById('mapRadius').value) || 5;
             const showDestinations = document.getElementById('showDestinations').checked;
             const showRestaurants = document.getElementById('showRestaurants').checked;
@@ -5622,14 +5672,15 @@
             const markers = [];
             let visibleCount = 0;
             
-            // Icon colors by type
-            const icons = {
-                main: '🏛️',
-                optional: '📌',
-                other: '⭐',
-                restaurants: '🍽️',
-                accommodation: '🏨'
-            };
+            // Get locations from selected day if filtering by day
+            let dayLocations = new Set();
+            if (selectedDay !== 'all' && tripData.dayPlans && tripData.dayPlans[selectedDay]) {
+                tripData.dayPlans[selectedDay].activities.forEach(act => {
+                    if (act.location) {
+                        dayLocations.add(act.location.toLowerCase());
+                    }
+                });
+            }
             
             // Plot main/optional/other destinations
             if (showDestinations) {
@@ -5637,20 +5688,28 @@
                     (tripData.destinations[type] || []).forEach(dest => {
                         if (selectedCountry !== 'all' && dest.country !== selectedCountry) return;
                         
+                        // Filter by day if selected
+                        if (selectedDay !== 'all') {
+                            const matchDay = dayLocations.has(dest.city?.toLowerCase()) || 
+                                           dayLocations.has(dest.placeName?.toLowerCase());
+                            if (!matchDay) return;
+                        }
+                        
                         if (dest.mapsLink) {
                             const coords = extractCoordsFromMapsLink(dest.mapsLink);
                             if (coords) {
+                                const emoji = dest.emoji || '📍';
                                 const marker = L.marker(coords, {
                                     icon: L.divIcon({
-                                        html: `<div style="font-size: 24px;">${icons[type]}</div>`,
+                                        html: `<div style="font-size: 28px;">${emoji}</div>`,
                                         className: 'custom-marker',
-                                        iconSize: [30, 30]
+                                        iconSize: [35, 35]
                                     })
                                 }).addTo(map);
                                 
                                 marker.bindPopup(`
                                     <div style="min-width: 200px;">
-                                        <strong style="font-size: 16px; color: var(--primary);">${dest.city || 'Unknown'}</strong><br>
+                                        <strong style="font-size: 16px; color: var(--primary);">${emoji} ${dest.city || 'Unknown'}</strong><br>
                                         <div style="margin: 8px 0; color: var(--text-secondary);">${dest.placeName || ''}</div>
                                         ${dest.highlights ? `<div style="font-size: 13px; margin: 8px 0; padding: 8px; background: rgba(99,102,241,0.1); border-radius: 4px;">${dest.highlights}</div>` : ''}
                                         <a href="${dest.mapsLink}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>
@@ -5670,20 +5729,28 @@
                 (tripData.destinations.restaurants || []).forEach(dest => {
                     if (selectedCountry !== 'all' && dest.country !== selectedCountry) return;
                     
+                    // Filter by day if selected
+                    if (selectedDay !== 'all') {
+                        const matchDay = dayLocations.has(dest.city?.toLowerCase()) || 
+                                       dayLocations.has(dest.placeName?.toLowerCase());
+                        if (!matchDay) return;
+                    }
+                    
                     if (dest.mapsLink) {
                         const coords = extractCoordsFromMapsLink(dest.mapsLink);
                         if (coords) {
+                            const emoji = dest.emoji || '🍽️';
                             const marker = L.marker(coords, {
                                 icon: L.divIcon({
-                                    html: `<div style="font-size: 24px;">🍽️</div>`,
+                                    html: `<div style="font-size: 28px;">${emoji}</div>`,
                                     className: 'custom-marker',
-                                    iconSize: [30, 30]
+                                    iconSize: [35, 35]
                                 })
                             }).addTo(map);
                             
                             marker.bindPopup(`
                                 <div style="min-width: 200px;">
-                                    <strong style="font-size: 16px; color: var(--secondary);">🍽️ ${dest.placeName || dest.city || 'Restaurant'}</strong><br>
+                                    <strong style="font-size: 16px; color: var(--secondary);">${emoji} ${dest.placeName || dest.city || 'Restaurant'}</strong><br>
                                     <div style="margin: 8px 0; color: var(--text-secondary);">${dest.city || ''}</div>
                                     ${dest.highlights ? `<div style="font-size: 13px; margin: 8px 0;">${dest.highlights}</div>` : ''}
                                     <a href="${dest.mapsLink}" target="_blank" style="color: var(--secondary); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>
@@ -5705,17 +5772,18 @@
                     if (dest && dest.mapsLink) {
                         const coords = extractCoordsFromMapsLink(dest.mapsLink);
                         if (coords) {
+                            const emoji = dest.emoji || '🏨';
                             const marker = L.marker(coords, {
                                 icon: L.divIcon({
-                                    html: `<div style="font-size: 24px;">🏨</div>`,
+                                    html: `<div style="font-size: 28px;">${emoji}</div>`,
                                     className: 'custom-marker',
-                                    iconSize: [30, 30]
+                                    iconSize: [35, 35]
                                 })
                             }).addTo(map);
                             
                             marker.bindPopup(`
                                 <div style="min-width: 200px;">
-                                    <strong style="font-size: 16px; color: var(--success);">🏨 ${booking.name}</strong><br>
+                                    <strong style="font-size: 16px; color: var(--success);">${emoji} ${booking.name}</strong><br>
                                     <div style="margin: 8px 0; color: var(--text-secondary);">Confirmation: ${booking.confirmation}</div>
                                     <div style="font-size: 13px; margin: 4px 0;">Check-in: ${booking.datetime?.split('T')[0] || 'TBD'}</div>
                                     ${dest.mapsLink ? `<a href="${dest.mapsLink}" target="_blank" style="color: var(--success); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>` : ''}

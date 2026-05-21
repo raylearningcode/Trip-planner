@@ -2143,16 +2143,6 @@
                 </div>
             </div>
 
-            <!-- Distance Calculator Result -->
-            <div id="distanceResult" style="display: none; margin-bottom: 16px;">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">📏 Distance & Route Info</div>
-                    </div>
-                    <div id="distanceContent" style="padding: 20px;"></div>
-                </div>
-            </div>
-
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">🗺️ Interactive Map</div>
@@ -2161,6 +2151,17 @@
                     </div>
                 </div>
                 <div id="tripMap"></div>
+            </div>
+
+            <!-- Distance Calculator Result - Below Map -->
+            <div id="distanceResult" style="display: none; margin-top: 16px;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">📏 Distance & Route Info</div>
+                        <button onclick="clearDistanceSelection()" class="btn btn-secondary btn-sm">✕ Close</button>
+                    </div>
+                    <div id="distanceContent" style="padding: 20px;"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -5835,6 +5836,10 @@
             const distanceDiv = document.getElementById('distanceResult');
             const contentDiv = document.getElementById('distanceContent');
             
+            // Clear numbered markers first
+            distanceMarkers.forEach(m => map.removeLayer(m));
+            distanceMarkers = [];
+            
             // Draw line between points
             const line = L.polyline([point1.coords, point2.coords], {
                 color: '#6366f1',
@@ -5997,12 +6002,13 @@
                                 
                                 const locationKey = `${type}-${dest.city}-${dest.placeName}`;
                                 const displayName = dest.placeName || dest.city || 'Location';
+                                const subTitle = dest.placeName ? dest.city : ''; // Show city only if place name exists
                                 allCoords[locationKey] = {coords, name: `${emoji} ${displayName}`};
                                 
                                 marker.bindPopup(`
                                     <div style="min-width: 200px;">
-                                        <strong style="font-size: 16px; color: var(--primary);">${emoji} ${dest.city || dest.placeName || 'Location'}</strong><br>
-                                        <div style="margin: 8px 0; color: var(--text-secondary);">${dest.placeName || dest.city || ''}</div>
+                                        <strong style="font-size: 16px; color: var(--primary);">${emoji} ${dest.placeName || dest.city || 'Location'}</strong><br>
+                                        ${subTitle ? `<div style="margin: 8px 0; color: var(--text-secondary);">${subTitle}</div>` : ''}
                                         ${dest.highlights ? `<div style="font-size: 13px; margin: 8px 0; padding: 8px; background: rgba(99,102,241,0.1); border-radius: 4px;">${dest.highlights}</div>` : ''}
                                         <a href="${dest.mapsLink}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>
                                     </div>
@@ -6100,29 +6106,49 @@
             
             // Draw route lines from accommodations to all other locations
             if (showRouteLines && accommodationCoords.length > 0) {
+                console.log('🗺️ Route Drawing Debug:');
+                console.log('  Accommodations found:', accommodationCoords.length);
+                console.log('  Total locations in allCoords:', Object.keys(allCoords).length);
+                
                 // Use first accommodation as starting point
                 const startPoint = accommodationCoords[0].coords;
+                console.log('  Starting from:', accommodationCoords[0].name, startPoint);
                 
+                let linesDrawn = 0;
                 // Draw lines to all non-hotel markers
                 Object.entries(allCoords).forEach(([key, location]) => {
                     // Skip hotels
-                    if (key.startsWith('hotel-')) return;
+                    if (key.startsWith('hotel-')) {
+                        console.log('  Skipping hotel:', key);
+                        return;
+                    }
                     
                     // Skip if same location
                     if (Math.abs(location.coords[0] - startPoint[0]) < 0.0001 && 
-                        Math.abs(location.coords[1] - startPoint[1]) < 0.0001) return;
+                        Math.abs(location.coords[1] - startPoint[1]) < 0.0001) {
+                        console.log('  Skipping same location:', key);
+                        return;
+                    }
                     
+                    console.log('  Drawing line to:', key, location.coords);
                     const line = L.polyline([startPoint, location.coords], {
                         color: '#6366f1',
-                        weight: 2,
-                        opacity: 0.5,
+                        weight: 3,
+                        opacity: 0.6,
                         dashArray: '8, 12'
                     }).addTo(map);
                     
                     routeLines.push(line);
+                    linesDrawn++;
                 });
                 
-                console.log(`Drew ${routeLines.length} route lines from accommodation`);
+                console.log(`  ✅ Drew ${linesDrawn} route lines from accommodation`);
+            } else if (showRouteLines) {
+                console.log('⚠️ Route lines requested but no accommodations found');
+                console.log('  Make sure you have:');
+                console.log('  1. A hotel booking in Bookings page');
+                console.log('  2. A destination with the same name');
+                console.log('  3. Google Maps link in that destination');
             }
             
             // Update stats

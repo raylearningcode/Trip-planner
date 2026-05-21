@@ -5030,27 +5030,65 @@
 
                     const countryContent = countryDiv.querySelector(`#countryContent_${type}_${country.replace(/\s/g, '_')}`);
 
-                    // Render cities within country
+                    // Group by city within country
+                    const byCity = {};
                     items.forEach(({dest, idx}) => {
-                        const isExpanded = dest.expanded !== false;
-                        const dayCount = countDaysInCity(dest.city);
+                        const city = dest.city || 'Unnamed City';
+                        if (!byCity[city]) byCity[city] = [];
+                        byCity[city].push({dest, idx});
+                    });
 
-                        const cityDiv = document.createElement('div');
-                        cityDiv.style.cssText = 'background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 16px; overflow: hidden;';
-                        cityDiv.innerHTML = `
-                            <div style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card);" 
-                                 onclick="toggleDestination('${type}', ${idx})">
+                    // Render each city group
+                    Object.entries(byCity).forEach(([city, cityItems]) => {
+                        const cityExpanded = cityItems[0].dest.cityExpanded !== false;
+                        const dayCount = countDaysInCity(city);
+
+                        const cityGroupDiv = document.createElement('div');
+                        cityGroupDiv.style.cssText = 'margin-bottom: 16px;';
+                        cityGroupDiv.innerHTML = `
+                            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" 
+                                 onclick="toggleCityGroup('${type}', '${city.replace(/'/g, "\\'")}')">
                                 <div>
-                                    <h4 style="margin: 0; color: var(--secondary); display: inline-block;">${dest.city || 'New Destination'}</h4>
-                                    <span style="margin-left: 15px; color: var(--text-secondary);">${dayCount > 0 ? dayCount + ' days' : ''}</span>
+                                    <h4 style="margin: 0; color: var(--secondary); display: inline-block;">${city}</h4>
+                                    <span style="margin-left: 15px; color: var(--text-secondary);">
+                                        ${cityItems.length} ${cityItems.length === 1 ? 'place' : 'places'}
+                                        ${dayCount > 0 ? ' • ' + dayCount + ' days' : ''}
+                                    </span>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <span style="font-size: 1.2rem;" id="destToggle_${type}_${idx}">${isExpanded ? '▼' : '▶'}</span>
-                                    <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteDestination('${type}', ${idx}, this)">Delete</button>
-                                </div>
+                                <span style="font-size: 1.2rem;" id="cityToggle_${type}_${city.replace(/\s/g, '_')}">
+                                    ${cityExpanded ? '▼' : '▶'}
+                                </span>
                             </div>
-                            <div id="destContent_${type}_${idx}" style="display: ${isExpanded ? 'block' : 'none'}; padding: 20px;">
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                            <div id="cityContent_${type}_${city.replace(/\s/g, '_')}" 
+                                 style="display: ${cityExpanded ? 'block' : 'none'}; padding-left: 15px; padding-top: 10px;">
+                            </div>
+                        `;
+                        countryContent.appendChild(cityGroupDiv);
+
+                        const cityContent = cityGroupDiv.querySelector(`#cityContent_${type}_${city.replace(/\s/g, '_')}`);
+
+                        // Render places within city
+                        cityItems.forEach(({dest, idx}) => {
+                            const isExpanded = dest.expanded !== false;
+
+                            const isExpanded = dest.expanded !== false;
+
+                            const placeDiv = document.createElement('div');
+                            placeDiv.style.cssText = 'background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; overflow: hidden;';
+                            placeDiv.innerHTML = `
+                                <div style="padding: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--bg-main);" 
+                                     onclick="toggleDestination('${type}', ${idx})">
+                                    <div>
+                                        <span style="font-size: 1.2rem; margin-right: 8px;">${dest.emoji || '📍'}</span>
+                                        <strong style="color: var(--text-primary);">${dest.placeName || 'New Place'}</strong>
+                                    </div>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <span style="font-size: 1rem;" id="destToggle_${type}_${idx}">${isExpanded ? '▼' : '▶'}</span>
+                                        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteDestination('${type}', ${idx}, this)">Delete</button>
+                                    </div>
+                                </div>
+                                <div id="destContent_${type}_${idx}" style="display: ${isExpanded ? 'block' : 'none'}; padding: 20px;">
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                                     <div>
                                         <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block;">Icon</label>
                                         <select onchange="tripData.destinations['${type}'][${idx}].emoji = this.value.split(' ')[0]; saveDataSync(); renderDestinations()" 
@@ -5155,7 +5193,8 @@
                                 </div>
                             </div>
                         `;
-                        countryContent.appendChild(cityDiv);
+                        cityContent.appendChild(placeDiv);
+                        });
                     });
                 });
 
@@ -5176,6 +5215,24 @@
                 toggle.textContent = isExpanded ? '▶' : '▼';
                 tripData.destinations[key] = !isExpanded;
                 saveData();
+            }
+        }
+
+        function toggleCityGroup(type, city) {
+            const content = document.getElementById(`cityContent_${type}_${city.replace(/\s/g, '_')}`);
+            const toggle = document.getElementById(`cityToggle_${type}_${city.replace(/\s/g, '_')}`);
+
+            if (content && toggle) {
+                const isExpanded = content.style.display !== 'none';
+                content.style.display = isExpanded ? 'none' : 'block';
+                toggle.textContent = isExpanded ? '▶' : '▼';
+                // Store state in first destination with this city
+                const dests = tripData.destinations[type] || [];
+                const firstDest = dests.find(d => d.city === city);
+                if (firstDest) {
+                    firstDest.cityExpanded = !isExpanded;
+                    saveData();
+                }
             }
         }
 

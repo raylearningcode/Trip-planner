@@ -4652,6 +4652,7 @@
 
         // Document Management Functions
         let currentDocFilter = 'all';
+        let uploadCounter = 0; // For unique IDs
 
         async function handleDocumentUpload(event) {
             const files = event.target.files;
@@ -4660,51 +4661,104 @@
                 return;
             }
 
+            console.log(`📤 Starting upload of ${files.length} file(s)`);
+
+            // Validate all files first
+            const validFiles = [];
             for (const file of files) {
-                // Validate size (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
-                    toast.error(`${file.name} is too large. Max 5MB per file.`);
-                    continue;
+                    toast.error(`${file.name} is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 5MB per file.`);
+                } else {
+                    validFiles.push(file);
                 }
-
-                // Show category selector (now properly handles scroll)
-                const category = await selectDocumentCategory();
-                if (!category) {
-                    console.log('Category selection cancelled');
-                    continue;
-                }
-
-                // Convert to base64
-                const base64 = await fileToBase64(file);
-                
-                const doc = {
-                    id: Date.now() + Math.random().toString(36).substr(2, 9),
-                    name: file.name,
-                    category: category,
-                    type: file.type,
-                    size: file.size,
-                    uploadedAt: new Date().toISOString(),
-                    uploadedBy: user?.username || user?.email || 'Unknown',
-                    base64: base64
-                };
-
-                tripData.documents.push(doc);
-                console.log('✅ Document added:', doc.name);
             }
 
+            if (validFiles.length === 0) {
+                toast.warning('No valid files to upload');
+                event.target.value = '';
+                return;
+            }
+
+            // Ask for category ONCE for all files
+            const category = await selectDocumentCategory();
+            if (!category) {
+                console.log('Category selection cancelled');
+                event.target.value = '';
+                return;
+            }
+
+            console.log(`📁 Category selected: ${category}`);
+            toast.info(`Uploading ${validFiles.length} file(s)...`);
+
+            // Process all files
+            const uploadedDocs = [];
+            for (const file of validFiles) {
+                try {
+                    console.log(`📄 Processing: ${file.name}`);
+                    
+                    // Convert to base64
+                    const base64 = await fileToBase64(file);
+                    
+                    // Generate unique ID
+                    uploadCounter++;
+                    const doc = {
+                        id: `${Date.now()}_${uploadCounter}_${Math.random().toString(36).substr(2, 9)}`,
+                        name: file.name,
+                        category: category,
+                        type: file.type,
+                        size: file.size,
+                        uploadedAt: new Date().toISOString(),
+                        uploadedBy: user?.username || user?.email || 'Unknown',
+                        base64: base64
+                    };
+
+                    uploadedDocs.push(doc);
+                    console.log(`✅ Converted: ${doc.name} (${(doc.size / 1024).toFixed(1)}KB)`);
+                    
+                } catch (error) {
+                    console.error(`❌ Error processing ${file.name}:`, error);
+                    toast.error(`Failed to process ${file.name}`);
+                }
+            }
+
+            if (uploadedDocs.length === 0) {
+                toast.error('No documents were uploaded successfully');
+                event.target.value = '';
+                return;
+            }
+
+            // Add all documents to tripData
+            tripData.documents.push(...uploadedDocs);
+            console.log(`✅ Added ${uploadedDocs.length} documents. Total: ${tripData.documents.length}`);
+
             // Save to database
-            await saveData();
+            try {
+                await saveData();
+                console.log('✅ Saved to database');
+            } catch (error) {
+                console.error('❌ Save error:', error);
+                toast.error('Failed to save documents to database');
+                // Rollback
+                tripData.documents = tripData.documents.filter(d => !uploadedDocs.includes(d));
+                event.target.value = '';
+                return;
+            }
             
-            // Render documents
+            // Render documents immediately
             renderDocuments();
+            console.log('✅ Documents rendered');
             
             // Show success message
-            toast.success(`${files.length} document(s) uploaded successfully!`);
+            if (uploadedDocs.length === 1) {
+                toast.success(`${uploadedDocs[0].name} uploaded successfully!`);
+            } else {
+                toast.success(`${uploadedDocs.length} documents uploaded successfully!`);
+            }
             
             // Reset input
             event.target.value = '';
             
-            console.log('✅ Upload complete, total documents:', tripData.documents.length);
+            console.log(`🎉 Upload complete! Total documents: ${tripData.documents.length}`);
         }
 
         function selectDocumentCategory() {
@@ -4827,9 +4881,17 @@
         }
 
         function viewDocument(docId) {
+            console.log('🔍 Viewing document:', docId);
             const doc = tripData.documents.find(d => d.id === docId);
-            if (!doc) return;
+            
+            if (!doc) {
+                console.error('❌ Document not found:', docId);
+                console.log('Available documents:', tripData.documents.map(d => d.id));
+                toast.error('Document not found. Try refreshing the page.');
+                return;
+            }
 
+            console.log('✅ Document found:', doc.name);
             const isImage = doc.type.startsWith('image/');
             const isPDF = doc.type === 'application/pdf';
 

@@ -3432,6 +3432,7 @@
                     if (row.data_type === 'bookings') tripData.bookings = row.data;
                     if (row.data_type === 'todos') tripData.todos = row.data;
                     if (row.data_type === 'shared_checklist') tripData.sharedChecklist = row.data;
+                    if (row.data_type === 'documents') tripData.documents = row.data; // LOAD DOCUMENTS!
                 }
             }
             
@@ -3511,6 +3512,7 @@
             if (!tripData.sharedExpenses) tripData.sharedExpenses = [];
             if (!tripData.packing) tripData.packing = [];
             if (!tripData.bookings) tripData.bookings = [];
+            if (!tripData.documents) tripData.documents = []; // ADD THIS
             if (!tripData.todos) tripData.todos = [];
             if (!tripData.sharedChecklist) tripData.sharedChecklist = [];
             if (!tripData.myChecklistProgress) tripData.myChecklistProgress = {};
@@ -3651,6 +3653,16 @@
                         trip_id: currentTrip,
                         data_type: 'shared_checklist',
                         data: tripData.sharedChecklist || [],
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                // Save documents (ADDED!)
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'documents',
+                        data: tripData.documents || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
                 );
@@ -4643,12 +4655,23 @@
 
         async function handleDocumentUpload(event) {
             const files = event.target.files;
-            if (!files || files.length === 0) return;
+            if (!files || files.length === 0) {
+                // Ensure scroll is restored even if no files selected
+                setTimeout(() => {
+                    if (document.body.style.overflow === 'hidden' && ModalManager.stack.length === 0) {
+                        document.body.style.overflow = '';
+                        document.body.style.position = '';
+                        document.body.style.top = '';
+                        document.body.style.width = '';
+                    }
+                }, 200);
+                return;
+            }
 
             for (const file of files) {
                 // Validate size (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
-                    alert(`${file.name} is too large. Max 5MB per file.`);
+                    toast.error(`${file.name} is too large. Max 5MB per file.`);
                     continue;
                 }
 
@@ -4675,10 +4698,21 @@
 
             await saveData();
             renderDocuments();
-            showSuccessToast(`${files.length} document(s) uploaded`);
+            toast.success(`${files.length} document(s) uploaded successfully!`);
             
             // Reset input
             event.target.value = '';
+            
+            // Force scroll restoration after all modals are closed
+            setTimeout(() => {
+                if (ModalManager.stack.length === 0) {
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    document.body.style.top = '';
+                    document.body.style.width = '';
+                    console.log('✅ Scroll restored after document upload');
+                }
+            }, 300);
         }
 
         function selectDocumentCategory() {

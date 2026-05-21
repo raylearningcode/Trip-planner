@@ -5790,8 +5790,8 @@
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <div style="font-size: 32px;">📍</div>
                     <div>
-                        <div style="font-size: 18px; margin-bottom: 4px;">Select 2 points on the map</div>
-                        <div style="font-size: 14px; opacity: 0.9;">Click any markers to calculate distance</div>
+                        <div id="selectionMessage" style="font-size: 18px; margin-bottom: 4px;">Click to select FIRST point</div>
+                        <div style="font-size: 14px; opacity: 0.9;">Select 2 markers to calculate distance</div>
                     </div>
                     <button onclick="clearDistanceSelection()" 
                             style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; 
@@ -5996,21 +5996,20 @@
                                 }).addTo(map);
                                 
                                 const locationKey = `${type}-${dest.city}-${dest.placeName}`;
-                                allCoords[locationKey] = {coords, name: `${emoji} ${dest.placeName || dest.city}`};
+                                const displayName = dest.placeName || dest.city || 'Location';
+                                allCoords[locationKey] = {coords, name: `${emoji} ${displayName}`};
                                 
                                 marker.bindPopup(`
                                     <div style="min-width: 200px;">
-                                        <strong style="font-size: 16px; color: var(--primary);">${emoji} ${dest.city || 'Unknown'}</strong><br>
-                                        <div style="margin: 8px 0; color: var(--text-secondary);">${dest.placeName || ''}</div>
+                                        <strong style="font-size: 16px; color: var(--primary);">${emoji} ${dest.city || dest.placeName || 'Location'}</strong><br>
+                                        <div style="margin: 8px 0; color: var(--text-secondary);">${dest.placeName || dest.city || ''}</div>
                                         ${dest.highlights ? `<div style="font-size: 13px; margin: 8px 0; padding: 8px; background: rgba(99,102,241,0.1); border-radius: 4px;">${dest.highlights}</div>` : ''}
                                         <a href="${dest.mapsLink}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>
                                     </div>
                                 `);
                                 
-                                // Add click handler for distance selection
-                                if (distanceSelectionMode) {
-                                    marker.on('click', () => handleMarkerClick({coords, name: `${emoji} ${dest.placeName || dest.city}`}));
-                                }
+                                // ALWAYS add click handler, not just in selection mode
+                                marker.on('click', () => handleMarkerClick({coords, name: `${emoji} ${displayName}`}));
                                 
                                 markers.push(coords);
                                 visibleCount++;
@@ -6044,20 +6043,20 @@
                             }).addTo(map);
                             
                             const locationKey = `restaurant-${dest.placeName}`;
-                            allCoords[locationKey] = {coords, name: `${emoji} ${dest.placeName || dest.city}`};
+                            const displayName = dest.placeName || dest.city || 'Restaurant';
+                            allCoords[locationKey] = {coords, name: `${emoji} ${displayName}`};
                             
                             marker.bindPopup(`
                                 <div style="min-width: 200px;">
-                                    <strong style="font-size: 16px; color: var(--secondary);">${emoji} ${dest.placeName || dest.city || 'Restaurant'}</strong><br>
+                                    <strong style="font-size: 16px; color: var(--secondary);">${emoji} ${displayName}</strong><br>
                                     <div style="margin: 8px 0; color: var(--text-secondary);">${dest.city || ''}</div>
                                     ${dest.highlights ? `<div style="font-size: 13px; margin: 8px 0;">${dest.highlights}</div>` : ''}
                                     <a href="${dest.mapsLink}" target="_blank" style="color: var(--secondary); text-decoration: none; font-weight: 600;">📍 Open in Maps →</a>
                                 </div>
                             `);
                             
-                            if (distanceSelectionMode) {
-                                marker.on('click', () => handleMarkerClick({coords, name: `${emoji} ${dest.placeName || dest.city}`}));
-                            }
+                            // ALWAYS add click handler
+                            marker.on('click', () => handleMarkerClick({coords, name: `${emoji} ${displayName}`}));
                             
                             markers.push(coords);
                             visibleCount++;
@@ -6091,9 +6090,8 @@
                         </div>
                     `);
                     
-                    if (distanceSelectionMode) {
-                        marker.on('click', () => handleMarkerClick({coords, name: `${emoji} ${name}`}));
-                    }
+                    // ALWAYS add click handler
+                    marker.on('click', () => handleMarkerClick({coords, name: `${emoji} ${name}`}));
                     
                     markers.push(coords);
                     visibleCount++;
@@ -6105,19 +6103,26 @@
                 // Use first accommodation as starting point
                 const startPoint = accommodationCoords[0].coords;
                 
-                Object.values(allCoords).forEach(location => {
-                    // Don't draw line to itself
-                    if (location.coords[0] === startPoint[0] && location.coords[1] === startPoint[1]) return;
+                // Draw lines to all non-hotel markers
+                Object.entries(allCoords).forEach(([key, location]) => {
+                    // Skip hotels
+                    if (key.startsWith('hotel-')) return;
+                    
+                    // Skip if same location
+                    if (Math.abs(location.coords[0] - startPoint[0]) < 0.0001 && 
+                        Math.abs(location.coords[1] - startPoint[1]) < 0.0001) return;
                     
                     const line = L.polyline([startPoint, location.coords], {
                         color: '#6366f1',
                         weight: 2,
-                        opacity: 0.4,
-                        dashArray: '5, 10'
+                        opacity: 0.5,
+                        dashArray: '8, 12'
                     }).addTo(map);
                     
                     routeLines.push(line);
                 });
+                
+                console.log(`Drew ${routeLines.length} route lines from accommodation`);
             }
             
             // Update stats
@@ -6134,15 +6139,35 @@
             
             selectedPoints.push(point);
             
-            // Add temporary marker
+            // Update message
+            const messageEl = document.getElementById('selectionMessage');
+            if (messageEl) {
+                if (selectedPoints.length === 1) {
+                    messageEl.textContent = 'Click to select SECOND point';
+                    messageEl.style.color = '#fbbf24'; // Yellow/amber color
+                }
+            }
+            
+            // Add temporary marker with number
             const tempMarker = L.circleMarker(point.coords, {
-                radius: 10,
-                fillColor: '#6366f1',
+                radius: 12,
+                fillColor: selectedPoints.length === 1 ? '#6366f1' : '#10b981',
                 color: '#fff',
-                weight: 2,
-                fillOpacity: 0.8
+                weight: 3,
+                fillOpacity: 0.9
             }).addTo(map);
+            
+            // Add number label
+            const numberMarker = L.marker(point.coords, {
+                icon: L.divIcon({
+                    html: `<div style="background: ${selectedPoints.length === 1 ? '#6366f1' : '#10b981'}; color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 12px rgba(0,0,0,0.4); font-size: 16px;">${selectedPoints.length}</div>`,
+                    className: 'custom-marker',
+                    iconSize: [28, 28]
+                })
+            }).addTo(map);
+            
             distanceMarkers.push(tempMarker);
+            distanceMarkers.push(numberMarker);
             
             if (selectedPoints.length === 2) {
                 distanceSelectionMode = false;

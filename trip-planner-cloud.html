@@ -1325,6 +1325,483 @@
         input[readonly]:hover, select[disabled]:hover, textarea[readonly]:hover {
             transform: none !important;
         }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           🎨 ENHANCED UI MAGIC - PHASE 1: ANIMATIONS & EFFECTS
+           ═══════════════════════════════════════════════════════════════════════ */
+
+        /* Smooth Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Apply animations to elements */
+        .card {
+            animation: fadeInScale 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-item {
+            animation: fadeIn 0.3s ease forwards;
+            animation-delay: calc(var(--nav-index) * 0.05s);
+        }
+
+        /* Enhanced Glassmorphism */
+        .card {
+            background: rgba(26, 26, 46, 0.6);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 8px 32px 0 rgba(0, 0, 0, 0.37),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        /* Gradient Text Effects */
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% 200%;
+            animation: gradientShift 3s ease infinite;
+        }
+
+        /* Floating Labels */
+        .form-group {
+            position: relative;
+        }
+
+        .form-input:focus ~ .form-label,
+        .form-input:not(:placeholder-shown) ~ .form-label {
+            transform: translateY(-24px) scale(0.85);
+            color: var(--primary);
+        }
+
+        /* Button Hover Effects */
+        .btn {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 10px 25px rgba(99, 102, 241, 0.4),
+                0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary) 100%);
+        }
+
+        /* Loading States */
+        .loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: rotate 0.6s linear infinite;
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0.05) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                rgba(255, 255, 255, 0.05) 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        .skeleton-text {
+            height: 12px;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-title {
+            height: 24px;
+            width: 60%;
+            margin-bottom: 16px;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           🎨 ENHANCED UI MAGIC - PHASE 2: TOAST NOTIFICATIONS
+           ═══════════════════════════════════════════════════════════════════════ */
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 16px 20px;
+            min-width: 300px;
+            max-width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            pointer-events: all;
+            animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toast-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .toast-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .toast-success {
+            border-left: 3px solid var(--success);
+        }
+
+        .toast-error {
+            border-left: 3px solid var(--danger);
+        }
+
+        .toast-warning {
+            border-left: 3px solid var(--warning);
+        }
+
+        .toast-info {
+            border-left: 3px solid var(--primary);
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .toast-close:hover {
+            opacity: 1;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           🎨 ENHANCED UI MAGIC - PHASE 3: MICRO-INTERACTIONS
+           ═══════════════════════════════════════════════════════════════════════ */
+
+        /* Input Focus Effect */
+        .form-input {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .form-input:focus {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 16px rgba(99, 102, 241, 0.2),
+                0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Checkbox & Radio Animations */
+        input[type="checkbox"] {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-main);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        input[type="checkbox"]:checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        input[type="checkbox"]:hover {
+            border-color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        /* Stat Card Hover */
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .stat-card:hover::before {
+            left: 100%;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(99, 102, 241, 0.2);
+            border-color: var(--primary);
+        }
+
+        /* Nav Item Active Effect */
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+            border-radius: 0 2px 2px 0;
+        }
+
+        /* Tag/Badge Styles */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-primary {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--primary-light);
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+            animation: bounce 2s infinite;
+        }
+
+        .empty-state-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        /* Tooltip */
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) translateY(-4px);
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            font-size: 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+
+        [data-tooltip]::after {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 2px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.9);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        [data-tooltip]:hover::before,
+        [data-tooltip]:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -2302,6 +2779,386 @@
         } else {
             console.log('✅ Supabase SDK loaded');
         }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           ⚡ UTILITY FUNCTIONS & ENHANCEMENTS
+           ═══════════════════════════════════════════════════════════════════════ */
+
+        // Toast Notification System
+        class ToastSystem {
+            constructor() {
+                this.container = null;
+                this.init();
+            }
+
+            init() {
+                if (!document.querySelector('.toast-container')) {
+                    this.container = document.createElement('div');
+                    this.container.className = 'toast-container';
+                    document.body.appendChild(this.container);
+                }
+            }
+
+            show(message, type = 'info', duration = 4000) {
+                const icons = {
+                    success: '✅',
+                    error: '❌',
+                    warning: '⚠️',
+                    info: 'ℹ️'
+                };
+
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.innerHTML = `
+                    <span class="toast-icon">${icons[type]}</span>
+                    <div class="toast-content">
+                        <div class="toast-message">${message}</div>
+                    </div>
+                    <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+                `;
+
+                this.container.appendChild(toast);
+
+                // Auto-remove after duration
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(400px)';
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+
+                return toast;
+            }
+
+            success(message, duration) {
+                return this.show(message, 'success', duration);
+            }
+
+            error(message, duration) {
+                return this.show(message, 'error', duration);
+            }
+
+            warning(message, duration) {
+                return this.show(message, 'warning', duration);
+            }
+
+            info(message, duration) {
+                return this.show(message, 'info', duration);
+            }
+        }
+
+        // Initialize Toast System
+        const toast = new ToastSystem();
+
+        // Input Validation Utilities
+        const validate = {
+            number(value, min = 0, max = Infinity) {
+                const num = parseFloat(value);
+                if (isNaN(num)) return { valid: false, error: 'Please enter a valid number' };
+                if (num < min) return { valid: false, error: `Must be at least ${min}` };
+                if (num > max) return { valid: false, error: `Must be at most ${max}` };
+                return { valid: true, value: num };
+            },
+
+            required(value, fieldName = 'This field') {
+                if (!value || value.trim() === '') {
+                    return { valid: false, error: `${fieldName} is required` };
+                }
+                return { valid: true, value: value.trim() };
+            },
+
+            email(value) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(value)) {
+                    return { valid: false, error: 'Please enter a valid email' };
+                }
+                return { valid: true, value };
+            },
+
+            url(value) {
+                try {
+                    new URL(value);
+                    return { valid: true, value };
+                } catch {
+                    return { valid: false, error: 'Please enter a valid URL' };
+                }
+            },
+
+            date(value) {
+                const date = new Date(value);
+                if (isNaN(date.getTime())) {
+                    return { valid: false, error: 'Please enter a valid date' };
+                }
+                return { valid: true, value: date };
+            }
+        };
+
+        // Enhanced saveData with quota checking
+        function saveDataEnhanced() {
+            try {
+                const data = JSON.stringify(tripData);
+                const sizeKB = new Blob([data]).size / 1024;
+                
+                if (sizeKB > 5000) { // 5MB warning
+                    console.warn(`⚠️ Data size: ${sizeKB.toFixed(2)}KB - approaching localStorage limit`);
+                    toast.warning(`Large data size: ${sizeKB.toFixed(0)}KB. Consider archiving old data.`, 6000);
+                }
+                
+                localStorage.setItem('tripData', data);
+                
+                // Show save indicator briefly
+                showSaveIndicator();
+                
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    toast.error('Storage full! Please delete some data or clear browser cache.', 8000);
+                    console.error('localStorage quota exceeded:', e);
+                } else {
+                    toast.error('Failed to save data: ' + e.message);
+                    console.error('Save error:', e);
+                }
+            }
+        }
+
+        // Save Indicator
+        function showSaveIndicator() {
+            const indicator = document.createElement('div');
+            indicator.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                background: rgba(16, 185, 129, 0.95);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                z-index: 10000;
+                animation: fadeInScale 0.2s ease;
+            `;
+            indicator.textContent = '✓ Saved';
+            document.body.appendChild(indicator);
+            
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+                indicator.style.transform = 'translateY(10px)';
+                setTimeout(() => indicator.remove(), 200);
+            }, 1500);
+        }
+
+        // Debounce utility
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Auto-save with debounce
+        const autoSave = debounce(() => {
+            saveDataEnhanced();
+        }, 1000);
+
+        // Keyboard Shortcuts System
+        class KeyboardShortcuts {
+            constructor() {
+                this.shortcuts = new Map();
+                this.init();
+            }
+
+            init() {
+                document.addEventListener('keydown', (e) => {
+                    // Skip if user is typing in input
+                    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+                        return;
+                    }
+
+                    const key = this.getKeyCombo(e);
+                    const handler = this.shortcuts.get(key);
+                    
+                    if (handler) {
+                        e.preventDefault();
+                        handler(e);
+                    }
+                });
+            }
+
+            getKeyCombo(e) {
+                const parts = [];
+                if (e.ctrlKey || e.metaKey) parts.push('ctrl');
+                if (e.altKey) parts.push('alt');
+                if (e.shiftKey) parts.push('shift');
+                parts.push(e.key.toLowerCase());
+                return parts.join('+');
+            }
+
+            register(combo, handler, description) {
+                this.shortcuts.set(combo, handler);
+                return this;
+            }
+
+            unregister(combo) {
+                this.shortcuts.delete(combo);
+                return this;
+            }
+
+            showHelp() {
+                const shortcuts = Array.from(this.shortcuts.keys());
+                toast.info('Keyboard shortcuts: ' + shortcuts.join(', '), 6000);
+            }
+        }
+
+        // Initialize Keyboard Shortcuts
+        const kb = new KeyboardShortcuts();
+
+        // Register shortcuts
+        kb.register('ctrl+s', (e) => {
+            saveDataEnhanced();
+            toast.success('Data saved!');
+        }, 'Save data');
+
+        kb.register('ctrl+/', () => {
+            kb.showHelp();
+        }, 'Show shortcuts');
+
+        kb.register('escape', () => {
+            // Close any open modals/overlays
+            const overlay = document.getElementById('mobileOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }, 'Close modals');
+
+        // Prevent default Ctrl+S (browser save)
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+            }
+        });
+
+        // Error Boundary Wrapper
+        function safeExecute(fn, context = 'Action') {
+            try {
+                return fn();
+            } catch (error) {
+                console.error(`Error in ${context}:`, error);
+                toast.error(`${context} failed: ${error.message}`);
+                return null;
+            }
+        }
+
+        // Enhanced localStorage with error handling
+        const storage = {
+            get(key, defaultValue = null) {
+                try {
+                    const item = localStorage.getItem(key);
+                    return item ? JSON.parse(item) : defaultValue;
+                } catch (error) {
+                    console.error(`Error reading ${key}:`, error);
+                    toast.error(`Failed to load ${key}`);
+                    return defaultValue;
+                }
+            },
+
+            set(key, value) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                    return true;
+                } catch (error) {
+                    console.error(`Error saving ${key}:`, error);
+                    if (error.name === 'QuotaExceededError') {
+                        toast.error('Storage full!');
+                    } else {
+                        toast.error(`Failed to save ${key}`);
+                    }
+                    return false;
+                }
+            },
+
+            remove(key) {
+                try {
+                    localStorage.removeItem(key);
+                    return true;
+                } catch (error) {
+                    console.error(`Error removing ${key}:`, error);
+                    return false;
+                }
+            },
+
+            clear() {
+                try {
+                    localStorage.clear();
+                    return true;
+                } catch (error) {
+                    console.error('Error clearing storage:', error);
+                    return false;
+                }
+            }
+        };
+
+        // Format currency
+        function formatCurrency(amount, currency = 'USD') {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency
+            }).format(amount);
+        }
+
+        // Format date
+        function formatDate(date, format = 'short') {
+            const d = typeof date === 'string' ? new Date(date) : date;
+            
+            const formats = {
+                short: { month: 'short', day: 'numeric' },
+                medium: { month: 'short', day: 'numeric', year: 'numeric' },
+                long: { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }
+            };
+            
+            return d.toLocaleDateString('en-US', formats[format] || formats.medium);
+        }
+
+        // Calculate days between dates
+        function daysBetween(date1, date2) {
+            const d1 = typeof date1 === 'string' ? new Date(date1) : date1;
+            const d2 = typeof date2 === 'string' ? new Date(date2) : date2;
+            const diffTime = Math.abs(d2 - d1);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        // Copy to clipboard
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                toast.success('Copied to clipboard!');
+                return true;
+            } catch (error) {
+                console.error('Failed to copy:', error);
+                toast.error('Failed to copy to clipboard');
+                return false;
+            }
+        }
+
+        // Generate unique ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // Smooth scroll to element
+        function scrollToElement(selector, offset = 0) {
+            const element = document.querySelector(selector);
+            if (element) {
+                const top = element.getBoundingClientRect().top + window.pageYOffset - offset;
+                window.scrollTo({
+                    top: top,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        console.log('✨ Enhanced utilities loaded!');
+        
         
         // Supabase Setup
         const SUPABASE_URL = 'https://xwoxevuziypkcuplazdu.supabase.co';
@@ -2698,6 +3555,9 @@
                 
             } catch (err) {
                 console.error('Save error:', err);
+                if (typeof toast !== 'undefined') {
+                    toast.error('Failed to save: ' + err.message, 5000);
+                }
             }
             
             // Extended timeout - all realtime events arrive within 1.5s

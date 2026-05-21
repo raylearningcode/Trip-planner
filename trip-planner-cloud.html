@@ -4656,15 +4656,7 @@
         async function handleDocumentUpload(event) {
             const files = event.target.files;
             if (!files || files.length === 0) {
-                // Ensure scroll is restored even if no files selected
-                setTimeout(() => {
-                    if (document.body.style.overflow === 'hidden' && ModalManager.stack.length === 0) {
-                        document.body.style.overflow = '';
-                        document.body.style.position = '';
-                        document.body.style.top = '';
-                        document.body.style.width = '';
-                    }
-                }, 200);
+                console.log('No files selected');
                 return;
             }
 
@@ -4675,9 +4667,12 @@
                     continue;
                 }
 
-                // Show category selector
+                // Show category selector (now properly handles scroll)
                 const category = await selectDocumentCategory();
-                if (!category) continue;
+                if (!category) {
+                    console.log('Category selection cancelled');
+                    continue;
+                }
 
                 // Convert to base64
                 const base64 = await fileToBase64(file);
@@ -4694,25 +4689,22 @@
                 };
 
                 tripData.documents.push(doc);
+                console.log('✅ Document added:', doc.name);
             }
 
+            // Save to database
             await saveData();
+            
+            // Render documents
             renderDocuments();
+            
+            // Show success message
             toast.success(`${files.length} document(s) uploaded successfully!`);
             
             // Reset input
             event.target.value = '';
             
-            // Force scroll restoration after all modals are closed
-            setTimeout(() => {
-                if (ModalManager.stack.length === 0) {
-                    document.body.style.overflow = '';
-                    document.body.style.position = '';
-                    document.body.style.top = '';
-                    document.body.style.width = '';
-                    console.log('✅ Scroll restored after document upload');
-                }
-            }, 300);
+            console.log('✅ Upload complete, total documents:', tripData.documents.length);
         }
 
         function selectDocumentCategory() {
@@ -4720,16 +4712,38 @@
                 showModal(`
                     <h2 style="margin-bottom: 20px;">Select Document Category</h2>
                     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('flights')">✈️ Flights</button>
-                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('hotels')">🏨 Hotels</button>
-                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('visas')">🛂 Visas</button>
-                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('insurance')">🛡️ Insurance</button>
-                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('tickets')">🎟️ Tickets</button>
-                        <button class="btn btn-primary" onclick="closeModal(); window.tempResolve('ids')">🆔 IDs/Passports</button>
+                        <button class="btn btn-primary" onclick="window.selectCategory('flights')">✈️ Flights</button>
+                        <button class="btn btn-primary" onclick="window.selectCategory('hotels')">🏨 Hotels</button>
+                        <button class="btn btn-primary" onclick="window.selectCategory('visas')">🛂 Visas</button>
+                        <button class="btn btn-primary" onclick="window.selectCategory('insurance')">🛡️ Insurance</button>
+                        <button class="btn btn-primary" onclick="window.selectCategory('tickets')">🎟️ Tickets</button>
+                        <button class="btn btn-primary" onclick="window.selectCategory('ids')">🆔 IDs/Passports</button>
                     </div>
-                    <button class="btn btn-secondary" style="margin-top: 16px; width: 100%;" onclick="closeModal(); window.tempResolve(null)">Cancel</button>
+                    <button class="btn btn-secondary" style="margin-top: 16px; width: 100%;" onclick="window.selectCategory(null)">Cancel</button>
                 `);
-                window.tempResolve = resolve;
+                
+                // Create a safe callback that closes modal FIRST, then resolves
+                window.selectCategory = (category) => {
+                    // Step 1: Close modal
+                    closeModal();
+                    
+                    // Step 2: Wait for modal animation to complete
+                    setTimeout(() => {
+                        // Step 3: Force scroll restoration
+                        document.body.style.overflow = '';
+                        document.body.style.position = '';
+                        document.body.style.top = '';
+                        document.body.style.width = '';
+                        
+                        // Step 4: Resolve promise
+                        resolve(category);
+                        
+                        // Step 5: Cleanup
+                        delete window.selectCategory;
+                        
+                        console.log('✅ Category selected, scroll restored');
+                    }, 100);
+                };
             });
         }
 
@@ -7803,6 +7817,7 @@
             renderSharedExpenses();
             renderDestinations();
             renderDayPlans();
+            renderDocuments(); // CRITICAL: Added this to render documents on load!
             updateOverviewSummary();
             
             // Set share link

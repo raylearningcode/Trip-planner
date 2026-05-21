@@ -5840,14 +5840,14 @@
             distanceMarkers.forEach(m => map.removeLayer(m));
             distanceMarkers = [];
             
-            // Draw line between points
-            const line = L.polyline([point1.coords, point2.coords], {
+            // Draw temporary line between points
+            const tempLine = L.polyline([point1.coords, point2.coords], {
                 color: '#6366f1',
                 weight: 4,
                 opacity: 0.8,
                 dashArray: '10, 5'
             }).addTo(map);
-            distanceMarkers.push(line);
+            distanceMarkers.push(tempLine);
             
             // Show loading state
             contentDiv.innerHTML = `
@@ -5858,15 +5858,33 @@
             `;
             distanceDiv.style.display = 'block';
             
-            // Fetch real route data from OpenRouteService
+            // Fetch real route data from OSRM (no CORS issues!)
             try {
                 const routes = await Promise.all([
-                    fetchRealRoute(point1.coords, point2.coords, 'driving-car'),
-                    fetchRealRoute(point1.coords, point2.coords, 'foot-walking'),
-                    fetchRealRoute(point1.coords, point2.coords, 'cycling-regular')
+                    fetchRealRoute(point1.coords, point2.coords, 'driving'),
+                    fetchRealRoute(point1.coords, point2.coords, 'foot'),
+                    fetchRealRoute(point1.coords, point2.coords, 'bike')
                 ]);
                 
                 const [drivingRoute, walkingRoute, cyclingRoute] = routes;
+                
+                // Remove temporary line
+                distanceMarkers.forEach(m => map.removeLayer(m));
+                distanceMarkers = [];
+                
+                // Draw real route if available
+                if (drivingRoute && drivingRoute.geometry) {
+                    const latlngs = drivingRoute.geometry.map(coord => [coord[1], coord[0]]);
+                    const routeLine = L.polyline(latlngs, {
+                        color: '#6366f1',
+                        weight: 4,
+                        opacity: 0.8
+                    }).addTo(map);
+                    distanceMarkers.push(routeLine);
+                } else {
+                    // Keep temporary line
+                    distanceMarkers.push(tempLine);
+                }
                 
                 // Use real data if available, otherwise fall back to estimates
                 const travelTime = {
@@ -6000,26 +6018,90 @@
         }
         
         async function fetchRealRoute(start, end, profile) {
-            // OpenRouteService API (free tier: 2000 requests/day)
-            const apiKey = '5b3ce3597851110001cf6248a8661cdfd1e0406b9c1ba41aea10a3ca';
-            const url = `https://api.openrouteservice.org/v2/directions/${profile}?api_key=${apiKey}&start=${start[1]},${start[0]}&end=${end[1]},${end[0]}`;
+            // Use OSRM (OpenStreetMap Routing Machine) - no API key needed, no CORS issues
+            const url = `https://router.project-osrm.org/route/v1/${profile}/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
             
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('API request failed');
                 
                 const data = await response.json();
-                if (data.features && data.features[0]) {
-                    const route = data.features[0].properties.segments[0];
+                if (data.routes && data.routes[0]) {
+                    const route = data.routes[0];
                     return {
                         distance: route.distance, // in meters
-                        duration: route.duration  // in seconds
+                        duration: route.duration, // in seconds
+                        geometry: route.geometry.coordinates // [[lng, lat], [lng, lat], ...]
                     };
                 }
             } catch (error) {
                 console.warn(`Failed to fetch ${profile} route:`, error);
                 return null;
             }
+        }
+        
+        async function drawRealRoutes(accommodationCoords, allCoords) {
+            if (!accommodationCoords || accommodationCoords.length === 0) return;
+            
+            console.log('🗺️ Drawing real routes from accommodation...');
+            const startPoint = accommodationCoords[0].coords;
+            let routesDrawn = 0;
+            
+            // Draw routes to all non-hotel destinations
+            for (const [key, location] of Object.entries(allCoords)) {
+                if (key.startsWith('hotel-')) continue;
+                
+                // Skip if same location
+                if (Math.abs(location.coords[0] - startPoint[0]) < 0.0001 && 
+                    Math.abs(location.coords[1] - startPoint[1]) < 0.0001) continue;
+                
+                // Fetch real driving route
+                const route = await fetchRealRoute(startPoint, location.coords, 'driving');
+                
+                if (route && route.geometry) {
+                    // Convert geometry to Leaflet format [lat, lng]
+                    const latlngs = route.geometry.map(coord => [coord[1], coord[0]]);
+                    
+                    const polyline = L.polyline(latlngs, {
+                        color: '#6366f1',
+                        weight: 3,
+                        opacity: 0.6,
+                        dashArray: '8, 12'
+                    }).addTo(map);
+                    
+                    // Add popup showing distance
+                    const distanceKm = (route.distance / 1000).toFixed(1);
+                    const durationMin = Math.round(route.duration / 60);
+                    polyline.bindPopup(`
+                        <div style="text-align: center;">
+                            <strong>${accommodationCoords[0].name}</strong><br>
+                            ↓<br>
+                            <strong>${location.name}</strong><br>
+                            <div style="margin-top: 8px; padding: 8px; background: var(--bg-hover); border-radius: 6px;">
+                                📏 ${distanceKm} km<br>
+                                ⏱️ ${durationMin} min drive
+                            </div>
+                        </div>
+                    `);
+                    
+                    routeLines.push(polyline);
+                    routesDrawn++;
+                } else {
+                    // Fallback to straight line if API fails
+                    const line = L.polyline([startPoint, location.coords], {
+                        color: '#94a3b8',
+                        weight: 2,
+                        opacity: 0.4,
+                        dashArray: '4, 8'
+                    }).addTo(map);
+                    routeLines.push(line);
+                }
+                
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            console.log(`✅ Drew ${routesDrawn} real routes from accommodation`);
         }
         
         function displayEstimatedRoute(point1, point2, distance, contentDiv) {
@@ -6268,49 +6350,14 @@
             
             // Draw route lines from accommodations to all other locations
             if (showRouteLines && accommodationCoords.length > 0) {
-                console.log('🗺️ Route Drawing Debug:');
-                console.log('  Accommodations found:', accommodationCoords.length);
-                console.log('  Total locations in allCoords:', Object.keys(allCoords).length);
-                
-                // Use first accommodation as starting point
-                const startPoint = accommodationCoords[0].coords;
-                console.log('  Starting from:', accommodationCoords[0].name, startPoint);
-                
-                let linesDrawn = 0;
-                // Draw lines to all non-hotel markers
-                Object.entries(allCoords).forEach(([key, location]) => {
-                    // Skip hotels
-                    if (key.startsWith('hotel-')) {
-                        console.log('  Skipping hotel:', key);
-                        return;
-                    }
-                    
-                    // Skip if same location
-                    if (Math.abs(location.coords[0] - startPoint[0]) < 0.0001 && 
-                        Math.abs(location.coords[1] - startPoint[1]) < 0.0001) {
-                        console.log('  Skipping same location:', key);
-                        return;
-                    }
-                    
-                    console.log('  Drawing line to:', key, location.coords);
-                    const line = L.polyline([startPoint, location.coords], {
-                        color: '#6366f1',
-                        weight: 3,
-                        opacity: 0.6,
-                        dashArray: '8, 12'
-                    }).addTo(map);
-                    
-                    routeLines.push(line);
-                    linesDrawn++;
-                });
-                
-                console.log(`  ✅ Drew ${linesDrawn} route lines from accommodation`);
+                // Draw real routes asynchronously
+                drawRealRoutes(accommodationCoords, allCoords);
             } else if (showRouteLines) {
                 console.log('⚠️ Route lines requested but no accommodations found');
                 console.log('  Make sure you have:');
-                console.log('  1. A hotel booking in Bookings page');
-                console.log('  2. A destination with the same name');
-                console.log('  3. Google Maps link in that destination');
+                console.log('  1. A destination with 🏨 emoji OR "hotel" in name');
+                console.log('  2. Google Maps link for that destination');
+                console.log('  3. Other destinations with Maps links');
             }
             
             // Update stats

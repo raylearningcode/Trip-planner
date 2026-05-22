@@ -3258,13 +3258,20 @@
                 this.stack.pop();
                 
                 const modalOverlay = document.getElementById('modalOverlay');
+                const modalContent = document.getElementById('modalContent');
+                
                 if (modalOverlay) {
                     modalOverlay.classList.remove('active');
                 }
                 
+                // Clear content immediately
+                if (modalContent) {
+                    modalContent.innerHTML = '';
+                }
+                
                 // Only restore scroll if no modals are open
                 if (this.stack.length === 0) {
-                    // Restore body scroll
+                    // Restore body scroll IMMEDIATELY
                     document.body.style.overflow = '';
                     document.body.style.position = '';
                     document.body.style.top = '';
@@ -3275,6 +3282,8 @@
                     
                     // Remove escape listener
                     document.removeEventListener('keydown', this.escapeHandler);
+                    
+                    console.log('✅ Modal closed, scroll restored');
                 }
             },
 
@@ -4785,10 +4794,16 @@
                     
                     console.log(`✅ Uploaded to storage:`, uploadData.path);
                     
-                    // Get public URL (for viewing)
-                    const { data: urlData } = sb.storage
+                    // Get SIGNED URL for private bucket (expires in 1 year)
+                    const { data: urlData, error: urlError } = await sb.storage
                         .from('trip-documents')
-                        .getPublicUrl(storagePath);
+                        .createSignedUrl(storagePath, 31536000); // 1 year in seconds
+                    
+                    if (urlError) {
+                        console.error('❌ Error creating signed URL:', urlError);
+                        toast.error('Failed to create file URL');
+                        continue;
+                    }
                     
                     // Create document metadata
                     const doc = {
@@ -4800,7 +4815,7 @@
                         uploadedAt: new Date().toISOString(),
                         uploadedBy: user?.username || user?.email || 'Unknown',
                         storagePath: storagePath, // Path in Supabase Storage
-                        publicUrl: urlData.publicUrl // URL to view/download
+                        signedUrl: urlData.signedUrl // Signed URL to view/download
                     };
 
                     uploadedDocs.push(doc);
@@ -4873,27 +4888,15 @@
                 
                 // Create a safe callback that closes modal FIRST, then resolves
                 window.selectCategory = (category) => {
-                    console.log('📁 Category button clicked:', category);
+                    console.log('📁 Category selected:', category);
                     
-                    // Step 1: Close modal
+                    // Close modal
                     closeModal();
                     
-                    // Step 2: Wait for modal animation to complete
+                    // Small delay then resolve
                     setTimeout(() => {
-                        // Step 3: Force scroll restoration
-                        document.body.style.overflow = '';
-                        document.body.style.position = '';
-                        document.body.style.top = '';
-                        document.body.style.width = '';
-                        
-                        // Step 4: Resolve promise
                         resolve(category);
-                        
-                        // DON'T delete window.selectCategory here!
-                        // It will be replaced on next call to selectDocumentCategory()
-                        
-                        console.log('✅ Category selected, scroll restored');
-                    }, 100);
+                    }, 150);
                 };
             });
         }
@@ -4931,17 +4934,18 @@
                 `);
                 
                 window.handleDuplicateChoice = (choice) => {
-                    console.log('User chose:', choice);
+                    console.log('✅ User chose:', choice);
+                    
+                    // Close modal first
                     closeModal();
                     
+                    // Small delay to let modal close, then resolve
                     setTimeout(() => {
-                        document.body.style.overflow = '';
-                        document.body.style.position = '';
-                        document.body.style.top = '';
-                        document.body.style.width = '';
-                        
                         resolve(choice);
-                    }, 100);
+                        
+                        // Cleanup
+                        delete window.handleDuplicateChoice;
+                    }, 150);
                 };
             });
         }
@@ -4994,8 +4998,8 @@
                 const isImage = doc.type.startsWith('image/');
                 const isPDF = doc.type === 'application/pdf';
                 
-                // Use publicUrl for new docs, base64 for old docs (backward compatibility)
-                const previewUrl = doc.publicUrl || doc.base64 || '';
+                // Use signedUrl for new docs, base64 for old docs (backward compatibility)
+                const previewUrl = doc.signedUrl || doc.publicUrl || doc.base64 || '';
                 
                 card.innerHTML = `
                     <div class="document-preview">
@@ -5050,8 +5054,8 @@
             const isImage = doc.type.startsWith('image/');
             const isPDF = doc.type === 'application/pdf';
             
-            // Use publicUrl for new docs, base64 for old docs (backward compatibility)
-            const fileUrl = doc.publicUrl || doc.base64 || '';
+            // Use signedUrl for new docs, publicUrl/base64 for old docs (backward compatibility)
+            const fileUrl = doc.signedUrl || doc.publicUrl || doc.base64 || '';
 
             showModal(`
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -8930,11 +8934,6 @@
             
             closeModal();
             showSuccessToast(`Notification sent to ${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''}!`);
-        }
-        
-        function closeModal() {
-            document.getElementById('modalOverlay').style.display = 'none';
-            document.getElementById('modalContent').innerHTML = '';
         }
         
         // Auto-notify members about important changes

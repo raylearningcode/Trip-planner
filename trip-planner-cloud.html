@@ -5013,10 +5013,17 @@
                         </div>
                     </div>
                     <div class="document-actions">
-                        <button class="doc-btn-view" onclick="viewDocument('${doc.id}')">👁️ View</button>
-                        <button class="doc-btn-delete" onclick="deleteDocument('${doc.id}')">🗑️</button>
+                        <button class="doc-btn-view" data-doc-id="${doc.id}">👁️ View</button>
+                        <button class="doc-btn-delete" data-doc-id="${doc.id}">🗑️</button>
                     </div>
                 `;
+                
+                // Add event listeners after creating the element
+                const viewBtn = card.querySelector('.doc-btn-view');
+                const deleteBtn = card.querySelector('.doc-btn-delete');
+                
+                viewBtn.addEventListener('click', () => viewDocument(doc.id));
+                deleteBtn.addEventListener('click', () => deleteDocument(doc.id));
                 
                 grid.appendChild(card);
             });

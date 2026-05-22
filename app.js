@@ -229,19 +229,22 @@
             }
         }
         
-        // 3. Read-Only Share Link
+        // 3. Read-Only Share Link (localStorage based - no DB changes needed)
         async function generateShareLink() {
             try {
-                // Generate unique share token
+                // Generate share token and save to localStorage
                 const shareToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+                const shareData = {
+                    tripId: currentTrip,
+                    overview: tripData.overview,
+                    destinations: tripData.destinations,
+                    dayPlans: tripData.dayPlans,
+                    bookings: tripData.bookings,
+                    sharedExpenses: tripData.sharedExpenses,
+                    group: tripData.group
+                };
                 
-                // Save share token to trip
-                const { error } = await sb
-                    .from('trips')
-                    .update({ share_token: shareToken, share_enabled: true })
-                    .eq('id', currentTrip);
-                
-                if (error) throw error;
+                localStorage.setItem(`share_${shareToken}`, JSON.stringify(shareData));
                 
                 const shareUrl = `${window.location.origin}${window.location.pathname}?share=${shareToken}`;
                 
@@ -253,9 +256,11 @@
                     <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin: 16px 0; word-break: break-all;">
                         <code style="color: var(--primary);">${shareUrl}</code>
                     </div>
+                    <p style="font-size: 12px; color: var(--text-secondary); margin: 8px 0;">
+                        ⚠️ Note: Share link stored in browser. Clear cache = link expires.
+                    </p>
                     <div style="display: flex; gap: 12px; margin-top: 24px;">
                         <button class="btn btn-primary" onclick="copyShareLink('${shareUrl}')">📋 Copy Link</button>
-                        <button class="btn" onclick="revokeShareLink()">🔒 Revoke Access</button>
                         <button class="btn" onclick="closeModal()">Close</button>
                     </div>
                 `);
@@ -272,75 +277,56 @@
             });
         }
         
-        async function revokeShareLink() {
-            if (!confirm('Revoke share access? The link will stop working.')) return;
+        // 4. Import Data
+        async function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
             
-            try {
-                await sb
-                    .from('trips')
-                    .update({ share_enabled: false })
-                    .eq('id', currentTrip);
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
                 
-                toast.success('Share link revoked');
-                closeModal();
-            } catch (err) {
-                toast.error('Failed to revoke link');
-            }
-        }
-        
-        // 4. Backup/Export All Data
-        async function exportAllData() {
-            try {
-                toast.info('Preparing export...');
-                
-                const exportData = {
-                    trip_info: {
-                        destination: tripData.overview.destination,
-                        dates: {
-                            departure: tripData.overview.departureDate,
-                            return: tripData.overview.returnDate
-                        },
-                        exported_at: new Date().toISOString()
-                    },
-                    budget: tripData.budget,
-                    savings: tripData.savings,
-                    bookings: tripData.bookings,
-                    destinations: tripData.destinations,
-                    itinerary: tripData.dayPlans,
-                    packing: tripData.packing,
-                    shared_expenses: tripData.sharedExpenses,
-                    checklist: tripData.sharedChecklist,
-                    todos: tripData.todos,
-                    group: tripData.group,
-                    documents: tripData.documents?.map(d => ({
-                        name: d.name,
-                        category: d.category,
-                        uploaded_at: d.uploadedAt
-                    }))
-                };
-                
-                const json = JSON.stringify(exportData, null, 2);
-                const blob = new Blob([json], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `trip-backup-${tripData.overview.destination.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-                
-                toast.success('Backup downloaded!');
-            } catch (err) {
-                console.error('Export error:', err);
-                toast.error('Failed to export data');
-            }
+                try {
+                    const text = await file.text();
+                    const imported = JSON.parse(text);
+                    
+                    if (!confirm('Import this data? This will OVERWRITE your current trip data.')) return;
+                    
+                    toast.info('Importing data...');
+                    
+                    // Import data into tripData
+                    if (imported.budget) tripData.budget = imported.budget;
+                    if (imported.savings) tripData.savings = imported.savings;
+                    if (imported.bookings) tripData.bookings = imported.bookings;
+                    if (imported.destinations) tripData.destinations = imported.destinations;
+                    if (imported.itinerary) tripData.dayPlans = imported.itinerary;
+                    if (imported.packing) tripData.packing = imported.packing;
+                    if (imported.shared_expenses) tripData.sharedExpenses = imported.shared_expenses;
+                    if (imported.checklist) tripData.sharedChecklist = imported.checklist;
+                    if (imported.todos) tripData.todos = imported.todos;
+                    
+                    // Save to database
+                    await saveData();
+                    
+                    // Reload UI
+                    await loadData();
+                    
+                    toast.success('Data imported successfully!');
+                } catch (err) {
+                    console.error('Import error:', err);
+                    toast.error('Failed to import data - invalid file');
+                }
+            };
+            
+            input.click();
         }
         
         // Make functions globally available
         window.optimizeRoute = optimizeRoute;
-        window.duplicateTrip = duplicateTrip;
         window.generateShareLink = generateShareLink;
         window.copyShareLink = copyShareLink;
-        window.revokeShareLink = revokeShareLink;
+        window.importData = importData;
         window.exportAllData = exportAllData;
         
         // ========================================
@@ -1891,7 +1877,7 @@
             `);
             printWindow.document.close();
             
-            showSuccessToast('Opening printable itinerary...');
+            toast.success('Opening printable itinerary...');
         }
 
         async function onTripDateChange() {

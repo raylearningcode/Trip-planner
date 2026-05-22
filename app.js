@@ -4400,24 +4400,33 @@
         }
 
         async function updateGroupStats() {
-            const totalMembers = (tripData.group || []).length;
+            const totalMembers = (tripData.group || []).filter(m => m.confirmed).length;
             const confirmed = (tripData.group || []).filter(m => m.confirmed).length;
             
-            // Count pending invites from database
-            const { data: pendingInvites } = await sb
-                .from('trip_invitations')
-                .select('id')
-                .eq('trip_id', currentTrip)
-                .eq('inviter_id', user.id)
-                .eq('status', 'pending');
+            let pending = 0;
+            // Count pending invites from database (skip in guest mode)
+            if (!isGuestMode && user && currentTrip) {
+                const { data: pendingInvites } = await sb
+                    .from('trip_invitations')
+                    .select('id')
+                    .eq('trip_id', currentTrip)
+                    .eq('inviter_id', user.id)
+                    .eq('status', 'pending');
+                
+                pending = pendingInvites ? pendingInvites.length : 0;
+            }
             
-            const pending = pendingInvites ? pendingInvites.length : 0;
             const totalBudget = (tripData.group || []).reduce((sum, m) => sum + (m.budgetEur || 0), 0);
             
-            document.getElementById('totalMembers').textContent = totalMembers;
-            document.getElementById('confirmedMembers').textContent = confirmed;
-            document.getElementById('pendingInvites').textContent = pending;
-            document.getElementById('totalGroupBudget').textContent = formatEur(totalBudget);
+            const totalMembersEl = document.getElementById('totalMembers');
+            const confirmedMembersEl = document.getElementById('confirmedMembers');
+            const pendingInvitesEl = document.getElementById('pendingInvites');
+            const totalGroupBudgetEl = document.getElementById('totalGroupBudget');
+            
+            if (totalMembersEl) totalMembersEl.textContent = totalMembers;
+            if (confirmedMembersEl) confirmedMembersEl.textContent = confirmed;
+            if (pendingInvitesEl) pendingInvitesEl.textContent = pending;
+            if (totalGroupBudgetEl) totalGroupBudgetEl.textContent = formatEur(totalBudget);
             
             // Update travelers count in overview
             const travelersElem = document.getElementById('travelers');
@@ -6693,7 +6702,27 @@
                     
                     // Disable all inputs
                     setTimeout(() => {
+                        // Add CSS for guest mode
+                        const style = document.createElement('style');
+                        style.textContent = `
+                            .guest-mode .guest-hide { display: none !important; }
+                            .guest-mode .quick-actions-fab { display: none !important; }
+                            .guest-mode button:not(.nav-item button):not(.bottom-nav-item button) { 
+                                pointer-events: none !important; 
+                                opacity: 0.5 !important; 
+                            }
+                        `;
+                        document.head.appendChild(style);
+                        
                         document.querySelectorAll('input, textarea, select, button').forEach(el => {
+                            // Allow map layer toggles
+                            if (el.id === 'showDestinations' || el.id === 'showRestaurants' || el.id === 'showAccommodation') {
+                                el.disabled = false;
+                                el.style.pointerEvents = '';
+                                el.style.opacity = '1';
+                                return;
+                            }
+                            
                             if (!el.closest('.nav-item') && !el.closest('.bottom-nav')) {
                                 el.disabled = true;
                                 el.style.pointerEvents = 'none';

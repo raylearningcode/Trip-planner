@@ -242,6 +242,8 @@
                     bookings: tripData.bookings,
                     sharedExpenses: tripData.sharedExpenses,
                     group: tripData.group,
+                    emergencyContacts: tripData.emergencyContacts || [],
+                    importantInfo: tripData.importantInfo || [],
                     readonly: true
                 };
                 
@@ -1093,7 +1095,9 @@
                     if (row.data_type === 'bookings') tripData.bookings = row.data;
                     if (row.data_type === 'todos') tripData.todos = row.data;
                     if (row.data_type === 'shared_checklist') tripData.sharedChecklist = row.data;
-                    if (row.data_type === 'documents') tripData.documents = row.data; // LOAD DOCUMENTS!
+                    if (row.data_type === 'documents') tripData.documents = row.data;
+                    if (row.data_type === 'emergency_contacts') tripData.emergencyContacts = row.data;
+                    if (row.data_type === 'important_info') tripData.importantInfo = row.data;
                 }
             }
             
@@ -1337,12 +1341,32 @@
                     }, { onConflict: 'trip_id,data_type' })
                 );
                 
-                // Save documents (ADDED!)
+                // Save documents
                 savePromises.push(
                     sb.from('shared_trip_data').upsert({
                         trip_id: currentTrip,
                         data_type: 'documents',
                         data: tripData.documents || [],
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                // Save emergency contacts
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'emergency_contacts',
+                        data: tripData.emergencyContacts || [],
+                        last_edited_by: user.id
+                    }, { onConflict: 'trip_id,data_type' })
+                );
+                
+                // Save important info
+                savePromises.push(
+                    sb.from('shared_trip_data').upsert({
+                        trip_id: currentTrip,
+                        data_type: 'important_info',
+                        data: tripData.importantInfo || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
                 );
@@ -6626,11 +6650,9 @@
                 renderTodos();
                 renderSharedChecklist();
                 renderDocuments();
-                renderEmergencyContacts();
-                renderImportantInfo();
             }
             
-            // Always render these (read-only safe)
+            // Always render these (read-only safe, important for guests)
             renderGroupMembers();
             updateGroupStats();
             renderBookings();
@@ -6638,6 +6660,8 @@
             renderDestinations();
             renderDayPlans();
             updateOverviewSummary();
+            renderEmergencyContacts();
+            renderImportantInfo();
             
             // Fetch weather for current destination
             fetchWeather();
@@ -6686,6 +6710,8 @@
                     tripData.bookings = shareData.bookings || [];
                     tripData.sharedExpenses = shareData.sharedExpenses || [];
                     tripData.group = shareData.group || [];
+                    tripData.emergencyContacts = shareData.emergencyContacts || [];
+                    tripData.importantInfo = shareData.importantInfo || [];
                     
                     // Hide edit buttons and disable inputs
                     document.body.classList.add('guest-mode');
@@ -6715,8 +6741,8 @@
                         document.head.appendChild(style);
                         
                         document.querySelectorAll('input, textarea, select, button').forEach(el => {
-                            // Allow map layer toggles
-                            if (el.id === 'showDestinations' || el.id === 'showRestaurants' || el.id === 'showAccommodation') {
+                            // Allow all map controls (checkboxes, selects, buttons)
+                            if (el.closest('#map')) {
                                 el.disabled = false;
                                 el.style.pointerEvents = '';
                                 el.style.opacity = '1';

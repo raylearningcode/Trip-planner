@@ -825,6 +825,7 @@
         }
         
         let user = null;
+        let isGuestMode = false;
         let currentTrip = null;
         let currentPage = 'overview'; // Track current page/tab
         let realtimeChannels = []; // Store active subscriptions
@@ -4334,15 +4335,17 @@
                         </div>
                         
                         <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
-                            ${member.user_id && member.user_id !== user.id ? `
+                            ${member.user_id && user && member.user_id !== user.id ? `
                                 <button class="btn btn-primary btn-sm" style="flex: 1;" onclick="viewMemberData('${member.user_id}')">
                                     👁️ View Data
                                 </button>
                             ` : ''}
-                            <button class="btn ${member.confirmed ? 'btn-secondary' : 'btn-success'} btn-sm" style="flex: 1; ${member.confirmed ? '' : 'background: linear-gradient(135deg, var(--success), #059669); border: none;'}" onclick="toggleMemberConfirm(${idx})">
-                                ${member.confirmed ? '✗ Unconfirm' : '✓ Confirm Attendance'}
-                            </button>
-                            ${!isOwner ? `
+                            ${user ? `
+                                <button class="btn ${member.confirmed ? 'btn-secondary' : 'btn-success'} btn-sm" style="flex: 1; ${member.confirmed ? '' : 'background: linear-gradient(135deg, var(--success), #059669); border: none;'}" onclick="toggleMemberConfirm(${idx})">
+                                    ${member.confirmed ? '✗ Unconfirm' : '✓ Confirm Attendance'}
+                                </button>
+                            ` : ''}
+                            ${!isOwner && user ? `
                                 <button class="btn btn-primary btn-sm" onclick="sendReminder('${member.user_id}', '${member.name}')" title="Send reminder">
                                     ⏰
                                 </button>
@@ -6596,28 +6599,36 @@
         function renderAll() {
             // Update trip details inputs (with safety checks)
             if (tripData.overview) {
-                document.getElementById('destination').value = tripData.overview.destination || '';
-                document.getElementById('departureDate').value = tripData.overview.departureDate || '';
-                document.getElementById('returnDate').value = tripData.overview.returnDate || '';
+                const destEl = document.getElementById('destination');
+                const depEl = document.getElementById('departureDate');
+                const retEl = document.getElementById('returnDate');
+                if (destEl) destEl.value = tripData.overview.destination || '';
+                if (depEl) depEl.value = tripData.overview.departureDate || '';
+                if (retEl) retEl.value = tripData.overview.returnDate || '';
             }
             
-            renderBudgetTable();
-            renderSavingsTable();
-            renderLogisticsTable();
+            // Skip certain renders in guest mode
+            if (!isGuestMode) {
+                renderBudgetTable();
+                renderSavingsTable();
+                renderLogisticsTable();
+                renderPendingInvitations();
+                renderPackingList();
+                renderTodos();
+                renderSharedChecklist();
+                renderDocuments();
+                renderEmergencyContacts();
+                renderImportantInfo();
+            }
+            
+            // Always render these (read-only safe)
             renderGroupMembers();
-            renderPendingInvitations();
             updateGroupStats();
-            renderPackingList();
-            renderTodos();
-            renderSharedChecklist();
             renderBookings();
             renderSharedExpenses();
             renderDestinations();
             renderDayPlans();
-            renderDocuments(); // CRITICAL: Added this to render documents on load!
             updateOverviewSummary();
-            renderEmergencyContacts();
-            renderImportantInfo();
             
             // Fetch weather for current destination
             fetchWeather();
@@ -6647,6 +6658,8 @@
                 
                 if (shareToken) {
                     console.log('👁️ Guest mode - loading shared trip');
+                    isGuestMode = true;
+                    
                     const shareDataStr = localStorage.getItem(`share_${shareToken}`);
                     
                     if (!shareDataStr) {

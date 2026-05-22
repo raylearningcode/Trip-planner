@@ -241,7 +241,8 @@
                     dayPlans: tripData.dayPlans,
                     bookings: tripData.bookings,
                     sharedExpenses: tripData.sharedExpenses,
-                    group: tripData.group
+                    group: tripData.group,
+                    readonly: true
                 };
                 
                 localStorage.setItem(`share_${shareToken}`, JSON.stringify(shareData));
@@ -254,13 +255,13 @@
                         Anyone with this link can view (but not edit) your trip:
                     </p>
                     <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin: 16px 0; word-break: break-all;">
-                        <code style="color: var(--primary);">${shareUrl}</code>
+                        <code id="shareUrlText" style="color: var(--primary);">${shareUrl}</code>
                     </div>
                     <p style="font-size: 12px; color: var(--text-secondary); margin: 8px 0;">
                         ⚠️ Note: Share link stored in browser. Clear cache = link expires.
                     </p>
                     <div style="display: flex; gap: 12px; margin-top: 24px;">
-                        <button class="btn btn-primary" onclick="copyShareLink('${shareUrl}')">📋 Copy Link</button>
+                        <button class="btn btn-primary" onclick="copyShareLinkFromModal()">📋 Copy Link</button>
                         <button class="btn" onclick="closeModal()">Close</button>
                     </div>
                 `);
@@ -271,9 +272,29 @@
             }
         }
         
+        function copyShareLinkFromModal() {
+            const urlText = document.getElementById('shareUrlText')?.textContent;
+            if (urlText) {
+                navigator.clipboard.writeText(urlText).then(() => {
+                    toast.success('Link copied to clipboard!');
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = urlText;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    toast.success('Link copied!');
+                });
+            }
+        }
+        
         function copyShareLink(url) {
             navigator.clipboard.writeText(url).then(() => {
                 toast.success('Link copied to clipboard!');
+            }).catch(() => {
+                toast.error('Failed to copy link');
             });
         }
         
@@ -373,6 +394,7 @@
         window.optimizeRoute = optimizeRoute;
         window.generateShareLink = generateShareLink;
         window.copyShareLink = copyShareLink;
+        window.copyShareLinkFromModal = copyShareLinkFromModal;
         window.importData = importData;
         window.exportAllData = exportAllData;
         
@@ -3308,7 +3330,9 @@
                         yPos += 12;
                         
                         if (day.activities) {
-                            const activities = day.activities.split('\n').filter(a => a.trim());
+                            const activities = typeof day.activities === 'string' 
+                                ? day.activities.split('\n').filter(a => a.trim())
+                                : Array.isArray(day.activities) ? day.activities : [String(day.activities)];
                             activities.forEach(activity => {
                                 checkPageBreak(6);
                                 doc.setFont(undefined, 'normal');
@@ -6611,6 +6635,58 @@
             console.log('🎬 Window loaded, starting initialization...');
             
             try {
+                // Check for share link (guest mode)
+                const urlParams = new URLSearchParams(window.location.search);
+                const shareToken = urlParams.get('share');
+                
+                if (shareToken) {
+                    console.log('👁️ Guest mode - loading shared trip');
+                    const shareDataStr = localStorage.getItem(`share_${shareToken}`);
+                    
+                    if (!shareDataStr) {
+                        alert('Share link expired or invalid');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    
+                    const shareData = JSON.parse(shareDataStr);
+                    
+                    // Load shared data as read-only
+                    tripData.overview = shareData.overview;
+                    tripData.destinations = shareData.destinations || { main: [], optional: [], other: [], restaurants: [] };
+                    tripData.dayPlans = shareData.dayPlans || [];
+                    tripData.bookings = shareData.bookings || [];
+                    tripData.sharedExpenses = shareData.sharedExpenses || [];
+                    tripData.group = shareData.group || [];
+                    
+                    // Hide edit buttons and disable inputs
+                    document.body.classList.add('guest-mode');
+                    
+                    // Add guest mode banner
+                    const banner = document.createElement('div');
+                    banner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #fbbf24; color: #000; padding: 12px; text-align: center; z-index: 9999; font-weight: 600;';
+                    banner.textContent = '👁️ Viewing in Guest Mode (Read-Only)';
+                    document.body.prepend(banner);
+                    
+                    // Render UI
+                    renderAll();
+                    updateAllStats();
+                    
+                    // Disable all inputs
+                    setTimeout(() => {
+                        document.querySelectorAll('input, textarea, select, button').forEach(el => {
+                            if (!el.closest('.nav-item') && !el.closest('.bottom-nav')) {
+                                el.disabled = true;
+                                el.style.pointerEvents = 'none';
+                                el.style.opacity = '0.6';
+                            }
+                        });
+                    }, 500);
+                    
+                    return; // Skip normal auth flow
+                }
+                
+                // Normal auth flow
                 // Check authentication
                 console.log('🔐 Checking authentication...');
                 const { data: { session }, error: sessionError } = await sb.auth.getSession();

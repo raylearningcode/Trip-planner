@@ -322,6 +322,53 @@
             input.click();
         }
         
+        // Export All Data
+        async function exportAllData() {
+            try {
+                toast.info('Preparing export...');
+                
+                const exportData = {
+                    trip_info: {
+                        destination: tripData.overview.destination,
+                        dates: {
+                            departure: tripData.overview.departureDate,
+                            return: tripData.overview.returnDate
+                        },
+                        exported_at: new Date().toISOString()
+                    },
+                    budget: tripData.budget,
+                    savings: tripData.savings,
+                    bookings: tripData.bookings,
+                    destinations: tripData.destinations,
+                    itinerary: tripData.dayPlans,
+                    packing: tripData.packing,
+                    shared_expenses: tripData.sharedExpenses,
+                    checklist: tripData.sharedChecklist,
+                    todos: tripData.todos,
+                    group: tripData.group,
+                    documents: tripData.documents?.map(d => ({
+                        name: d.name,
+                        category: d.category,
+                        uploaded_at: d.uploadedAt
+                    }))
+                };
+                
+                const json = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `trip-backup-${tripData.overview.destination.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                toast.success('Backup downloaded!');
+            } catch (err) {
+                console.error('Export error:', err);
+                toast.error('Failed to export data');
+            }
+        }
+        
         // Make functions globally available
         window.optimizeRoute = optimizeRoute;
         window.generateShareLink = generateShareLink;

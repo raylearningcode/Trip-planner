@@ -5536,7 +5536,7 @@
                         <textarea placeholder="Add notes everyone can see and edit... (ideas, tips, reminders)" 
                                   style="width: 100%; min-height: 80px; padding: 12px; background: var(--bg-main); border: 1px solid var(--border); 
                                          border-radius: 8px; color: var(--text-primary); font-size: 14px; line-height: 1.6; resize: vertical;"
-                                  onchange="tripData.dayPlans[${idx}].collaborativeNotes = this.value; saveDataSync()">${day.collaborativeNotes || ''}</textarea>
+                                  onchange="tripData.dayPlans[${idx}].collaborativeNotes = this.value; saveDataSync()">${plan.collaborativeNotes || ''}</textarea>
                     </div>
                     
                     <!-- Timeline connector -->

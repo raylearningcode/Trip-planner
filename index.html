@@ -83,7 +83,7 @@
                 </div>
             </div>
 
-            <div class="nav-section">
+            <div class="nav-section guest-hide">
                 <div class="nav-section-title">Finance</div>
                 <div class="nav-item" onclick="showPage('budget')">
                     <span class="nav-icon">💰</span><span>Budget</span>
@@ -101,13 +101,13 @@
                 <div class="nav-item" onclick="showPage('bookings')">
                     <span class="nav-icon">🎫</span><span>Bookings</span>
                 </div>
-                <div class="nav-item" onclick="showPage('checklist')">
+                <div class="nav-item guest-hide" onclick="showPage('checklist')">
                     <span class="nav-icon">✓</span><span>Checklist</span>
                 </div>
-                <div class="nav-item" onclick="showPage('packing')">
+                <div class="nav-item guest-hide" onclick="showPage('packing')">
                     <span class="nav-icon">🎒</span><span>Packing</span>
                 </div>
-                <div class="nav-item" onclick="showPage('todos')">
+                <div class="nav-item guest-hide" onclick="showPage('todos')">
                     <span class="nav-icon">✅</span><span>To-Do List</span>
                 </div>
                 <div class="nav-item" onclick="showPage('group')">
@@ -877,7 +877,7 @@
                 </div>
                 
                 <!-- Route Drawing -->
-                <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                <div class="guest-hide" style="background: var(--bg-hover); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
                     <div style="font-size: 13px; color: var(--text-tertiary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
                         🗺️ Route Options
                     </div>
@@ -894,10 +894,10 @@
                     </button>
                 </div>
                 
-                <!-- Show/Hide Layers -->
+                <!-- Show/Hide Layers (Always visible for guests) -->
                 <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
                     <div style="font-size: 13px; color: var(--text-tertiary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Display Layers
+                        📍 Display Layers
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 12px;">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 14px; 

@@ -1071,11 +1071,18 @@
             
             if (cached) {
                 exchangeRate = parseFloat(cached);
+                console.log(`💱 Exchange rate loaded: €1 = Rp ${exchangeRate.toFixed(2)}`);
             }
             
             // Refresh if cache is older than 1 day
             if (!cacheDate || (new Date() - new Date(cacheDate)) > 86400000) {
-                fetchExchangeRate();
+                console.log('🔄 Fetching fresh exchange rate...');
+                fetchExchangeRate().then(success => {
+                    if (success) console.log(`✅ Exchange rate updated: €1 = Rp ${exchangeRate.toFixed(2)}`);
+                });
+            } else {
+                const age = Math.round((new Date() - new Date(cacheDate)) / 3600000);
+                console.log(`📅 Using cached rate (${age}h old)`);
             }
         }
 
@@ -5526,17 +5533,18 @@
                         <button class="btn btn-danger btn-sm" onclick="deleteDayPlan(${idx}, this)">🗑️ Delete Day</button>
                     </div>
                     
-                    <!-- Collaborative Notes -->
-                    <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                    <!-- Collaborative Notes - Full Width -->
+                    <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; width: 100%;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                             <span style="font-size: 20px;">💬</span>
                             <span style="font-weight: 600; color: var(--text-primary);">Shared Notes</span>
                             <span style="font-size: 11px; color: var(--text-secondary); background: rgba(99, 102, 241, 0.1); padding: 4px 8px; border-radius: 6px;">Real-time</span>
                         </div>
                         <textarea placeholder="Add notes everyone can see and edit... (ideas, tips, reminders)" 
-                                  style="width: 100%; min-height: 80px; padding: 12px; background: var(--bg-main); border: 1px solid var(--border); 
-                                         border-radius: 8px; color: var(--text-primary); font-size: 14px; line-height: 1.6; resize: vertical;"
-                                  onchange="tripData.dayPlans[${idx}].collaborativeNotes = this.value; saveDataSync()">${plan.collaborativeNotes || ''}</textarea>
+                                  style="width: 100%; min-height: 100px; max-height: 300px; padding: 12px; background: var(--bg-main); border: 1px solid var(--border); 
+                                         border-radius: 8px; color: var(--text-primary); font-size: 14px; line-height: 1.6; resize: vertical; font-family: inherit;"
+                                  onchange="tripData.dayPlans[${idx}].collaborativeNotes = this.value; saveDataSync()"
+                                  oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 300) + 'px'">${plan.collaborativeNotes || ''}</textarea>
                     </div>
                     
                     <!-- Timeline connector -->

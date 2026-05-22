@@ -752,7 +752,10 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">🎯 Must-Visit Destinations</div>
-                        <button class="btn btn-primary btn-sm" onclick="addDestination('main')">+ Add</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary btn-sm" onclick="optimizeMainRoute()">🗺️ Optimize Route</button>
+                            <button class="btn btn-primary btn-sm" onclick="addDestination('main')">+ Add</button>
+                        </div>
                     </div>
                     <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 14px;">Core destinations you definitely want to visit</p>
                     <div id="mainDestContainer"></div>
@@ -1001,6 +1004,16 @@
         </div>
         <div class="quick-action" onclick="showWeatherWidget(); toggleQuickActions();">
             🌤️ Check Weather
+        </div>
+        <div style="border-top: 1px solid var(--border); margin: 8px 0;"></div>
+        <div class="quick-action" onclick="duplicateTrip(); toggleQuickActions();">
+            📋 Duplicate Trip
+        </div>
+        <div class="quick-action" onclick="generateShareLink(); toggleQuickActions();">
+            📤 Share Read-Only Link
+        </div>
+        <div class="quick-action" onclick="exportAllData(); toggleQuickActions();">
+            💾 Export All Data (JSON)
         </div>
     </div>
 

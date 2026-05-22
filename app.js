@@ -1228,6 +1228,12 @@
         }, 500); // 500ms debounce for typing
         
         async function saveData() {
+            // Skip save in guest mode
+            if (!user || !currentTrip) {
+                console.log('⏭️ Skipping save (guest mode or no user)');
+                return;
+            }
+            
             isLocalUpdate = true;
             
             tripData.overview = {
@@ -4284,7 +4290,7 @@
                 const statusClass = member.confirmed ? 'confirmed' : 'pending';
                 const statusText = member.confirmed ? '✓ Confirmed' : '⏳ Pending';
                 const isOwner = member.inviteStatus === 'owner';
-                const currentUserIsOwner = tripData.group.some(m => m.email === user.email && m.inviteStatus === 'owner');
+                const currentUserIsOwner = user ? tripData.group.some(m => m.email === user.email && m.inviteStatus === 'owner') : false;
                 
                 return `
                     <div class="member-card">

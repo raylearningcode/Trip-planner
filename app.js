@@ -109,6 +109,241 @@
                             ((cb) => setTimeout(cb, 16));
         
         // ========================================
+        // NEW FEATURES: Route Optimization, Duplication, Share, Export
+        // ========================================
+        
+        // 1. Route Optimization - Sort destinations by distance
+        function optimizeRoute(destinations) {
+            if (!destinations || destinations.length < 2) return destinations;
+            
+            // Extract coordinates from Google Maps links
+            const parseCoords = (mapsLink) => {
+                const match = mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                return match ? { lat: parseFloat(match[1]), lng: parseFloat(match[2]) } : null;
+            };
+            
+            // Haversine distance in km
+            const distance = (c1, c2) => {
+                const R = 6371;
+                const dLat = (c2.lat - c1.lat) * Math.PI / 180;
+                const dLon = (c2.lng - c1.lng) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                         Math.cos(c1.lat * Math.PI / 180) * Math.cos(c2.lat * Math.PI / 180) *
+                         Math.sin(dLon/2) * Math.sin(dLon/2);
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            };
+            
+            // Nearest neighbor algorithm
+            const coords = destinations.map(d => parseCoords(d.mapsLink)).filter(c => c);
+            if (coords.length < 2) return destinations;
+            
+            const optimized = [];
+            let current = 0;
+            const visited = new Set([0]);
+            optimized.push(destinations[0]);
+            
+            while (visited.size < coords.length) {
+                let nearest = -1;
+                let minDist = Infinity;
+                
+                for (let i = 0; i < coords.length; i++) {
+                    if (!visited.has(i)) {
+                        const dist = distance(coords[current], coords[i]);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = i;
+                        }
+                    }
+                }
+                
+                if (nearest !== -1) {
+                    visited.add(nearest);
+                    optimized.push(destinations[nearest]);
+                    current = nearest;
+                }
+            }
+            
+            return optimized;
+        }
+        
+        // 2. Trip Duplication
+        async function duplicateTrip() {
+            if (!confirm('Duplicate this trip as a new template?')) return;
+            
+            try {
+                toast.info('Duplicating trip...');
+                
+                // Create new trip
+                const { data: newTrip, error } = await sb
+                    .from('trips')
+                    .insert({
+                        destination: tripData.overview.destination + ' (Copy)',
+                        departure_date: null,
+                        return_date: null,
+                        owner_id: user.id
+                    })
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                // Copy shared data (destinations, bookings, checklist)
+                const sharedTypes = ['destinations', 'bookings', 'shared_checklist'];
+                for (const type of sharedTypes) {
+                    if (tripData[type === 'bookings' ? 'bookings' : type === 'shared_checklist' ? 'sharedChecklist' : type]) {
+                        await sb.from('shared_trip_data').insert({
+                            trip_id: newTrip.id,
+                            data_type: type === 'shared_checklist' ? 'shared_checklist' : type,
+                            data: tripData[type === 'bookings' ? 'bookings' : type === 'shared_checklist' ? 'sharedChecklist' : type],
+                            last_edited_by: user.id
+                        });
+                    }
+                }
+                
+                // Copy personal data (budget, packing)
+                const personalTypes = ['budget', 'packing', 'savings'];
+                for (const type of personalTypes) {
+                    if (tripData[type] && tripData[type].length > 0) {
+                        await sb.from('trip_data').insert({
+                            trip_id: newTrip.id,
+                            user_id: user.id,
+                            data_type: type,
+                            data: tripData[type]
+                        });
+                    }
+                }
+                
+                // Add owner as member
+                await sb.from('trip_members').insert({
+                    trip_id: newTrip.id,
+                    user_id: user.id,
+                    role: 'owner'
+                });
+                
+                toast.success('Trip duplicated! Redirecting...');
+                setTimeout(() => location.reload(), 1500);
+                
+            } catch (err) {
+                console.error('Duplicate error:', err);
+                toast.error('Failed to duplicate trip');
+            }
+        }
+        
+        // 3. Read-Only Share Link
+        async function generateShareLink() {
+            try {
+                // Generate unique share token
+                const shareToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+                
+                // Save share token to trip
+                const { error } = await sb
+                    .from('trips')
+                    .update({ share_token: shareToken, share_enabled: true })
+                    .eq('id', currentTrip);
+                
+                if (error) throw error;
+                
+                const shareUrl = `${window.location.origin}${window.location.pathname}?share=${shareToken}`;
+                
+                showModal(`
+                    <h2>📤 Share Read-Only Link</h2>
+                    <p style="color: var(--text-secondary); margin: 16px 0;">
+                        Anyone with this link can view (but not edit) your trip:
+                    </p>
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin: 16px 0; word-break: break-all;">
+                        <code style="color: var(--primary);">${shareUrl}</code>
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button class="btn btn-primary" onclick="copyShareLink('${shareUrl}')">📋 Copy Link</button>
+                        <button class="btn" onclick="revokeShareLink()">🔒 Revoke Access</button>
+                        <button class="btn" onclick="closeModal()">Close</button>
+                    </div>
+                `);
+                
+            } catch (err) {
+                console.error('Share error:', err);
+                toast.error('Failed to generate share link');
+            }
+        }
+        
+        function copyShareLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                toast.success('Link copied to clipboard!');
+            });
+        }
+        
+        async function revokeShareLink() {
+            if (!confirm('Revoke share access? The link will stop working.')) return;
+            
+            try {
+                await sb
+                    .from('trips')
+                    .update({ share_enabled: false })
+                    .eq('id', currentTrip);
+                
+                toast.success('Share link revoked');
+                closeModal();
+            } catch (err) {
+                toast.error('Failed to revoke link');
+            }
+        }
+        
+        // 4. Backup/Export All Data
+        async function exportAllData() {
+            try {
+                toast.info('Preparing export...');
+                
+                const exportData = {
+                    trip_info: {
+                        destination: tripData.overview.destination,
+                        dates: {
+                            departure: tripData.overview.departureDate,
+                            return: tripData.overview.returnDate
+                        },
+                        exported_at: new Date().toISOString()
+                    },
+                    budget: tripData.budget,
+                    savings: tripData.savings,
+                    bookings: tripData.bookings,
+                    destinations: tripData.destinations,
+                    itinerary: tripData.dayPlans,
+                    packing: tripData.packing,
+                    shared_expenses: tripData.sharedExpenses,
+                    checklist: tripData.sharedChecklist,
+                    todos: tripData.todos,
+                    group: tripData.group,
+                    documents: tripData.documents?.map(d => ({
+                        name: d.name,
+                        category: d.category,
+                        uploaded_at: d.uploadedAt
+                    }))
+                };
+                
+                const json = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `trip-backup-${tripData.overview.destination.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                toast.success('Backup downloaded!');
+            } catch (err) {
+                console.error('Export error:', err);
+                toast.error('Failed to export data');
+            }
+        }
+        
+        // Make functions globally available
+        window.optimizeRoute = optimizeRoute;
+        window.duplicateTrip = duplicateTrip;
+        window.generateShareLink = generateShareLink;
+        window.copyShareLink = copyShareLink;
+        window.revokeShareLink = revokeShareLink;
+        window.exportAllData = exportAllData;
+        
+        // ========================================
         // COMPREHENSIVE ERROR LOGGING
         // ========================================
         console.log('🚀 Script starting...');
@@ -4498,6 +4733,29 @@
             };
             return names[emoji] || 'Custom';
         }
+        
+        async function optimizeMainRoute() {
+            if (!tripData.destinations.main || tripData.destinations.main.length < 2) {
+                toast.warning('Need at least 2 destinations with Google Maps links to optimize');
+                return;
+            }
+            
+            const withCoords = tripData.destinations.main.filter(d => d.mapsLink && d.mapsLink.includes('@'));
+            if (withCoords.length < 2) {
+                toast.warning('Add Google Maps links to destinations first');
+                return;
+            }
+            
+            if (!confirm(`Optimize route for ${withCoords.length} destinations?`)) return;
+            
+            toast.info('Optimizing route...');
+            tripData.destinations.main = optimizeRoute(tripData.destinations.main);
+            await saveData();
+            renderDestinations();
+            toast.success('Route optimized by distance!');
+        }
+        
+        window.optimizeMainRoute = optimizeMainRoute;
 
         function renderDestinations() {
             ['main', 'optional', 'other', 'restaurants'].forEach(type => {

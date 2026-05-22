@@ -5148,53 +5148,121 @@
         async function fetchWeather() {
             const destination = document.getElementById('destination').value;
             if (!destination || destination.trim() === '') {
-                console.log('⚠️ No destination set, skipping weather');
+                console.log('⚠️ No destination set, hiding weather widget');
+                document.getElementById('weatherWidget').style.display = 'none';
                 return;
             }
 
             console.log('🌤️ Fetching weather for:', destination);
             
             try {
-                // Show weather widget
+                // Show weather widget with loading
                 document.getElementById('weatherWidget').style.display = 'block';
+                document.getElementById('weatherContent').innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <div style="font-size: 48px; margin-bottom: 12px;">🌤️</div>
+                        <div>Loading weather data...</div>
+                    </div>
+                `;
                 
-                // Use weather_fetch tool
+                // Extract city name (take first part before comma)
                 const destParts = destination.split(',').map(s => s.trim());
                 const city = destParts[0];
                 
-                // For now, show a placeholder with beautiful design
-                // In production, this would call the weather API
-                renderWeatherPlaceholder(city);
+                // OpenWeatherMap API (free tier, no key needed for demo)
+                // In production, you'd use: api.openweathermap.org/data/2.5/forecast?q=${city}&appid=YOUR_API_KEY&units=metric
+                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=auto&longitude=auto&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=auto&forecast_days=6`;
+                
+                // Use geocoding to get coordinates for the city
+                const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
+                
+                const geoResponse = await fetch(geoUrl);
+                const geoData = await geoResponse.json();
+                
+                if (!geoData.results || geoData.results.length === 0) {
+                    throw new Error('City not found');
+                }
+                
+                const { latitude, longitude, name: cityName, country } = geoData.results[0];
+                
+                // Fetch weather data
+                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=auto&forecast_days=6`;
+                const weatherResponse = await fetch(weatherUrl);
+                const weatherData = await weatherResponse.json();
+                
+                console.log('✅ Weather data received:', weatherData);
+                
+                renderWeatherData(cityName, country, weatherData);
                 
             } catch (error) {
                 console.error('❌ Weather fetch error:', error);
                 document.getElementById('weatherContent').innerHTML = `
                     <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                        <p>Unable to fetch weather data</p>
+                        <p>Unable to fetch weather for "${destination}"</p>
                         <button class="btn btn-secondary btn-sm" onclick="refreshWeather()" style="margin-top: 12px;">Try Again</button>
                     </div>
                 `;
             }
         }
 
-        function renderWeatherPlaceholder(city) {
-            // Beautiful weather card design
-            const weatherData = [
-                { day: 'Mon', temp: '22°', icon: '☀️', condition: 'Sunny', rain: '10%' },
-                { day: 'Tue', temp: '20°', icon: '⛅', condition: 'Partly Cloudy', rain: '20%' },
-                { day: 'Wed', temp: '18°', icon: '🌧️', condition: 'Rainy', rain: '80%' },
-                { day: 'Thu', temp: '21°', icon: '🌤️', condition: 'Mostly Sunny', rain: '15%' },
-                { day: 'Fri', temp: '23°', icon: '☀️', condition: 'Clear', rain: '5%' }
-            ];
+        function getWeatherIcon(weatherCode) {
+            // WMO Weather codes
+            if (weatherCode === 0) return '☀️'; // Clear
+            if (weatherCode <= 3) return '⛅'; // Partly cloudy
+            if (weatherCode <= 48) return '🌫️'; // Fog
+            if (weatherCode <= 57) return '🌧️'; // Drizzle
+            if (weatherCode <= 67) return '🌧️'; // Rain
+            if (weatherCode <= 77) return '🌨️'; // Snow
+            if (weatherCode <= 82) return '🌧️'; // Rain showers
+            if (weatherCode <= 86) return '🌨️'; // Snow showers
+            if (weatherCode <= 99) return '⛈️'; // Thunderstorm
+            return '🌤️';
+        }
+
+        function getWeatherCondition(weatherCode) {
+            if (weatherCode === 0) return 'Clear';
+            if (weatherCode <= 3) return 'Partly Cloudy';
+            if (weatherCode <= 48) return 'Foggy';
+            if (weatherCode <= 57) return 'Drizzle';
+            if (weatherCode <= 67) return 'Rainy';
+            if (weatherCode <= 77) return 'Snowy';
+            if (weatherCode <= 82) return 'Rain Showers';
+            if (weatherCode <= 86) return 'Snow Showers';
+            if (weatherCode <= 99) return 'Thunderstorm';
+            return 'Cloudy';
+        }
+
+        function renderWeatherData(cityName, country, data) {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const today = new Date();
+            
+            // Prepare 5 days starting from today
+            const weatherDays = [];
+            for (let i = 0; i < 5; i++) {
+                const date = new Date(data.daily.time[i]);
+                const dayName = i === 0 ? 'Today' : days[date.getDay()];
+                const tempMax = Math.round(data.daily.temperature_2m_max[i]);
+                const tempMin = Math.round(data.daily.temperature_2m_min[i]);
+                const weatherCode = data.daily.weathercode[i];
+                const rain = data.daily.precipitation_probability_max[i] || 0;
+                
+                weatherDays.push({
+                    day: dayName,
+                    temp: `${tempMax}°/${tempMin}°`,
+                    icon: getWeatherIcon(weatherCode),
+                    condition: getWeatherCondition(weatherCode),
+                    rain: `${rain}%`
+                });
+            }
 
             const html = `
                 <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-md); border-left: 3px solid var(--primary);">
-                    <div style="font-weight: 600; margin-bottom: 4px;">📍 ${city}</div>
-                    <div style="font-size: 13px; color: var(--text-secondary);">5-Day Forecast</div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">📍 ${cityName}, ${country}</div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">5-Day Forecast • Real-time data</div>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px;">
-                    ${weatherData.map(day => `
+                    ${weatherDays.map(day => `
                         <div style="
                             padding: 16px;
                             background: var(--bg-hover);
@@ -5211,7 +5279,7 @@
                             <div style="font-size: 36px; margin: 8px 0;">
                                 ${day.icon}
                             </div>
-                            <div style="font-size: 20px; font-weight: 600; margin: 8px 0;">
+                            <div style="font-size: 18px; font-weight: 600; margin: 8px 0;">
                                 ${day.temp}
                             </div>
                             <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">
@@ -5224,8 +5292,8 @@
                     `).join('')}
                 </div>
                 
-                <div style="margin-top: 16px; padding: 12px; background: rgba(99, 102, 241, 0.1); border-radius: var(--radius-md); font-size: 12px; color: var(--text-secondary); text-align: center;">
-                    ℹ️ Weather data is indicative. Check closer to your trip dates for accuracy.
+                <div style="margin-top: 16px; padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: var(--radius-md); font-size: 12px; color: var(--success); text-align: center;">
+                    ✅ Live weather data from Open-Meteo API • Updated ${new Date().toLocaleTimeString()}
                 </div>
             `;
             

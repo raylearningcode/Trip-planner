@@ -1,6 +1,112 @@
-// VERSION: 2026-05-20-FINAL-FIX
-        console.log('🚀 Trip Planner v2026-05-20-FINAL-FIX loading...');
-        console.log('✅ This version fixes ALL undefined function errors');
+// VERSION: 2026-05-22-PERFORMANCE-OPTIMIZED
+        console.log('🚀 Trip Planner v2026-05-22-PERFORMANCE-OPTIMIZED loading...');
+        console.log('⚡ Performance optimizations enabled');
+        
+        // ========================================
+        // PERFORMANCE UTILITIES
+        // ========================================
+        
+        // Virtual Scrolling for large lists
+        class VirtualScroller {
+            constructor(container, itemHeight, renderItem) {
+                this.container = container;
+                this.itemHeight = itemHeight;
+                this.renderItem = renderItem;
+                this.items = [];
+                this.visibleItems = new Map();
+                this.scrollTop = 0;
+            }
+            
+            setItems(items) {
+                this.items = items;
+                this.render();
+            }
+            
+            render() {
+                const containerHeight = this.container.clientHeight;
+                const startIndex = Math.floor(this.scrollTop / this.itemHeight);
+                const endIndex = Math.min(
+                    startIndex + Math.ceil(containerHeight / this.itemHeight) + 1,
+                    this.items.length
+                );
+                
+                // Clear old items
+                this.container.innerHTML = '';
+                
+                // Create spacer for items before viewport
+                const topSpacer = document.createElement('div');
+                topSpacer.style.height = `${startIndex * this.itemHeight}px`;
+                this.container.appendChild(topSpacer);
+                
+                // Render visible items
+                for (let i = startIndex; i < endIndex; i++) {
+                    const itemEl = this.renderItem(this.items[i], i);
+                    this.container.appendChild(itemEl);
+                }
+                
+                // Create spacer for items after viewport
+                const bottomSpacer = document.createElement('div');
+                bottomSpacer.style.height = `${(this.items.length - endIndex) * this.itemHeight}px`;
+                this.container.appendChild(bottomSpacer);
+            }
+            
+            onScroll(scrollTop) {
+                this.scrollTop = scrollTop;
+                this.render();
+            }
+        }
+        
+        // Debounce function with immediate option
+        function debounce(func, wait, immediate = false) {
+            let timeout;
+            return function executedFunction(...args) {
+                const context = this;
+                const later = function() {
+                    timeout = null;
+                    if (!immediate) func.apply(context, args);
+                };
+                const callNow = immediate && !timeout;
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+                if (callNow) func.apply(context, args);
+            };
+        }
+        
+        // Throttle function for scroll events
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+        
+        // Image lazy loading
+        function setupLazyLoading() {
+            const imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.src = img.dataset.src;
+                        img.classList.remove('lazy');
+                        imageObserver.unobserve(img);
+                    }
+                });
+            });
+            
+            document.querySelectorAll('img.lazy').forEach(img => {
+                imageObserver.observe(img);
+            });
+        }
+        
+        // Request Animation Frame wrapper for smooth animations
+        const requestFrame = window.requestAnimationFrame || 
+                            window.webkitRequestAnimationFrame ||
+                            window.mozRequestAnimationFrame ||
+                            ((cb) => setTimeout(cb, 16));
         
         // ========================================
         // COMPREHENSIVE ERROR LOGGING
@@ -818,11 +924,18 @@
 
         // Sync wrapper for inline onchange handlers (can't use async directly in HTML)
         function saveDataSync() {
-            saveData().catch(err => {
+            debouncedSave();
+        }
+        
+        // Debounced version for rapid input changes (e.g., typing)
+        const debouncedSave = debounce(async () => {
+            try {
+                await saveData();
+            } catch (err) {
                 console.error('Save error:', err);
                 showErrorToast('Failed to save data');
-            });
-        }
+            }
+        }, 500); // 500ms debounce for typing
         
         async function saveData() {
             isLocalUpdate = true;
@@ -1600,7 +1713,26 @@
             if (bottomNav) bottomNav.classList.add('active');
 
             if (window.innerWidth <= 1024) toggleSidebar();
-            if (pageId === 'map' && !window.mapInitialized) initMap();
+            
+            // Lazy load map with Leaflet library
+            if (pageId === 'map' && !window.mapInitialized) {
+                if (typeof window.loadLeaflet === 'function') {
+                    window.loadLeaflet().then(() => {
+                        initMap();
+                    }).catch(err => {
+                        console.error('Failed to load Leaflet:', err);
+                        toast.error('Failed to load map library');
+                    });
+                } else {
+                    // Fallback if already loaded
+                    initMap();
+                }
+            }
+            
+            // Lazy load images when page becomes active
+            if (document.getElementById(pageId)) {
+                requestFrame(() => setupLazyLoading());
+            }
         }
 
         function toggleSidebar() {

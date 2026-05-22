@@ -253,32 +253,73 @@
         /* Document Cards */
         .document-card {
             background: var(--bg-hover);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 0;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            overflow: hidden;
+            position: relative;
         }
 
         .document-card:hover {
             border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
+        }
+        
+        .document-card.selected {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        
+        .document-select-checkbox {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-main);
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .document-select-checkbox:hover {
+            border-color: var(--primary);
+            transform: scale(1.1);
+        }
+        
+        .document-select-checkbox.checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .document-select-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
         }
 
         .document-preview {
             width: 100%;
-            height: 140px;
-            background: var(--bg-main);
-            border-radius: var(--radius-sm);
+            height: 180px;
+            background: linear-gradient(135deg, var(--bg-main) 0%, var(--bg-hover) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 48px;
+            font-size: 64px;
             overflow: hidden;
+            position: relative;
         }
 
         .document-preview img {
@@ -290,7 +331,8 @@
         .document-info {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
+            padding: 16px;
         }
 
         .document-name {
@@ -312,12 +354,12 @@
         .document-actions {
             display: flex;
             gap: 8px;
-            margin-top: 4px;
+            padding: 0 16px 16px 16px;
         }
 
         .document-actions button {
             flex: 1;
-            padding: 8px;
+            padding: 10px;
             font-size: 12px;
             border-radius: 6px;
             border: none;
@@ -2169,12 +2211,37 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">📄 Travel Documents</div>
-                    <button class="btn btn-primary btn-sm" onclick="document.getElementById('documentUpload').click()">
-                        📤 Upload Document
-                    </button>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode()" id="selectModeBtn">
+                            ☑️ Select
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('documentUpload').click()">
+                            📤 Upload
+                        </button>
+                    </div>
                     <input type="file" id="documentUpload" style="display: none;" 
                            accept=".pdf,.jpg,.jpeg,.png" 
                            onchange="handleDocumentUpload(event)" multiple>
+                </div>
+                
+                <!-- Multi-select Action Bar -->
+                <div id="multiSelectBar" style="display: none; background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%); 
+                                                   padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 2px solid var(--primary);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-weight: 600; color: var(--primary); font-size: 14px;" id="selectedCount">0 selected</span>
+                            <button class="btn btn-secondary btn-sm" onclick="selectAllDocuments()">Select All</button>
+                            <button class="btn btn-secondary btn-sm" onclick="deselectAllDocuments()">Deselect All</button>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-danger btn-sm" onclick="deleteSelectedDocuments()" id="deleteSelectedBtn" disabled>
+                                🗑️ Delete Selected
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode()">
+                                ✕ Cancel
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Document Categories -->
@@ -2203,12 +2270,12 @@
                 </div>
 
                 <!-- Documents Grid -->
-                <div id="documentsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;">
+                <div id="documentsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
                     <!-- Documents will be rendered here -->
                 </div>
 
                 <div id="noDocuments" style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                    📄 No documents uploaded yet. Click "Upload Document" to add files.
+                    📄 No documents uploaded yet. Click "Upload" to add files.
                 </div>
             </div>
         </div>
@@ -4959,6 +5026,117 @@
             });
         }
 
+        // Multi-select state
+        let selectModeActive = false;
+        let selectedDocuments = new Set();
+        
+        function toggleSelectMode() {
+            selectModeActive = !selectModeActive;
+            selectedDocuments.clear();
+            
+            const btn = document.getElementById('selectModeBtn');
+            const bar = document.getElementById('multiSelectBar');
+            
+            if (selectModeActive) {
+                btn.textContent = '✕ Cancel';
+                btn.classList.add('btn-secondary');
+                btn.classList.remove('btn-primary');
+                bar.style.display = 'block';
+            } else {
+                btn.textContent = '☑️ Select';
+                btn.classList.add('btn-primary');
+                btn.classList.remove('btn-secondary');
+                bar.style.display = 'none';
+            }
+            
+            renderDocuments();
+            updateSelectedCount();
+        }
+        
+        function toggleDocumentSelect(docId) {
+            if (selectedDocuments.has(docId)) {
+                selectedDocuments.delete(docId);
+            } else {
+                selectedDocuments.add(docId);
+            }
+            renderDocuments();
+            updateSelectedCount();
+        }
+        
+        function selectAllDocuments() {
+            const filtered = currentDocFilter === 'all' 
+                ? tripData.documents 
+                : tripData.documents.filter(d => d.category === currentDocFilter);
+            filtered.forEach(doc => selectedDocuments.add(doc.id));
+            renderDocuments();
+            updateSelectedCount();
+        }
+        
+        function deselectAllDocuments() {
+            selectedDocuments.clear();
+            renderDocuments();
+            updateSelectedCount();
+        }
+        
+        function updateSelectedCount() {
+            const countEl = document.getElementById('selectedCount');
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            
+            if (countEl) {
+                const count = selectedDocuments.size;
+                countEl.textContent = `${count} selected`;
+            }
+            
+            if (deleteBtn) {
+                deleteBtn.disabled = selectedDocuments.size === 0;
+            }
+        }
+        
+        async function deleteSelectedDocuments() {
+            if (selectedDocuments.size === 0) return;
+            
+            const count = selectedDocuments.size;
+            const confirmed = confirm(`Delete ${count} document(s)? This cannot be undone.`);
+            
+            if (!confirmed) return;
+            
+            toast.info(`Deleting ${count} document(s)...`);
+            
+            try {
+                const docsToDelete = Array.from(selectedDocuments);
+                
+                // Delete from storage
+                for (const docId of docsToDelete) {
+                    const doc = tripData.documents.find(d => d.id === docId);
+                    if (doc && doc.storagePath) {
+                        await sb.storage.from('trip-documents').remove([doc.storagePath]);
+                    }
+                }
+                
+                // Remove from array
+                tripData.documents = tripData.documents.filter(d => !docsToDelete.includes(d.id));
+                
+                // Save to database
+                await saveData();
+                
+                // Clear selection
+                selectedDocuments.clear();
+                selectModeActive = false;
+                document.getElementById('selectModeBtn').click();
+                
+                // Re-render
+                renderDocuments();
+                
+                toast.success(`${count} document(s) deleted`);
+                
+            } catch (error) {
+                console.error('❌ Delete failed:', error);
+                toast.error('Failed to delete documents');
+                await loadData();
+                renderDocuments();
+            }
+        }
+
         function filterDocuments(category) {
             currentDocFilter = category;
             
@@ -4994,6 +5172,9 @@
             filtered.forEach(doc => {
                 const card = document.createElement('div');
                 card.className = 'document-card';
+                if (selectedDocuments.has(doc.id)) {
+                    card.classList.add('selected');
+                }
                 
                 const isImage = doc.type.startsWith('image/');
                 const isPDF = doc.type === 'application/pdf';
@@ -5002,6 +5183,8 @@
                 const previewUrl = doc.signedUrl || doc.publicUrl || doc.base64 || '';
                 
                 card.innerHTML = `
+                    ${selectModeActive ? `<div class="document-select-checkbox ${selectedDocuments.has(doc.id) ? 'checked' : ''}" 
+                                              data-doc-id="${doc.id}"></div>` : ''}
                     <div class="document-preview">
                         ${isImage ? `<img src="${previewUrl}" alt="${doc.name}">` : 
                           isPDF ? '📄' : '📋'}
@@ -5022,12 +5205,28 @@
                     </div>
                 `;
                 
-                // Add event listeners after creating the element
-                const viewBtn = card.querySelector('.doc-btn-view');
-                const deleteBtn = card.querySelector('.doc-btn-delete');
-                
-                viewBtn.addEventListener('click', () => viewDocument(doc.id));
-                deleteBtn.addEventListener('click', () => deleteDocument(doc.id));
+                // Add event listeners
+                if (selectModeActive) {
+                    const checkbox = card.querySelector('.document-select-checkbox');
+                    checkbox.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleDocumentSelect(doc.id);
+                    });
+                    
+                    card.addEventListener('click', () => toggleDocumentSelect(doc.id));
+                } else {
+                    const viewBtn = card.querySelector('.doc-btn-view');
+                    const deleteBtn = card.querySelector('.doc-btn-delete');
+                    
+                    viewBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        viewDocument(doc.id);
+                    });
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteDocument(doc.id);
+                    });
+                }
                 
                 grid.appendChild(card);
             });
@@ -5051,12 +5250,44 @@
             }
 
             console.log('✅ Document found:', doc.name);
+            console.log('📄 Storage path:', doc.storagePath);
+            console.log('🔗 Signed URL:', doc.signedUrl ? 'exists' : 'missing');
+            
             const isImage = doc.type.startsWith('image/');
             const isPDF = doc.type === 'application/pdf';
             
             // Use signedUrl for new docs, publicUrl/base64 for old docs (backward compatibility)
-            const fileUrl = doc.signedUrl || doc.publicUrl || doc.base64 || '';
+            let fileUrl = doc.signedUrl || doc.publicUrl || doc.base64 || '';
+            
+            // If no URL, regenerate signed URL from storage path
+            if (!fileUrl && doc.storagePath) {
+                console.log('⚠️ No URL found, regenerating signed URL...');
+                toast.info('Loading document...');
+                
+                // Regenerate signed URL
+                sb.storage
+                    .from('trip-documents')
+                    .createSignedUrl(doc.storagePath, 3600) // 1 hour
+                    .then(({ data, error }) => {
+                        if (error) {
+                            console.error('❌ Error creating signed URL:', error);
+                            toast.error('Failed to load document: ' + error.message);
+                            return;
+                        }
+                        
+                        fileUrl = data.signedUrl;
+                        console.log('✅ Regenerated signed URL');
+                        
+                        // Show modal with regenerated URL
+                        showDocumentModal(doc, fileUrl, isImage, isPDF);
+                    });
+                return;
+            }
 
+            showDocumentModal(doc, fileUrl, isImage, isPDF);
+        }
+        
+        function showDocumentModal(doc, fileUrl, isImage, isPDF) {
             showModal(`
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2>${doc.name}</h2>
@@ -5065,8 +5296,8 @@
                     </a>
                 </div>
                 <div style="max-height: 70vh; overflow: auto;">
-                    ${isImage ? `<img src="${fileUrl}" style="width: 100%; border-radius: 8px;">` :
-                      isPDF ? `<embed src="${fileUrl}" type="application/pdf" style="width: 100%; height: 600px;">` :
+                    ${isImage ? `<img src="${fileUrl}" style="width: 100%; border-radius: 8px;" onerror="this.parentElement.innerHTML='<p style=color:var(--error)>Failed to load image. Click Download button.</p>'">` :
+                      isPDF ? `<embed src="${fileUrl}" type="application/pdf" style="width: 100%; height: 600px;" onerror="this.parentElement.innerHTML='<p style=color:var(--error)>Failed to load PDF. Click Download button.</p>'">` :
                       '<p>Preview not available. Click Download to view.</p>'}
                 </div>
             `);
@@ -5324,6 +5555,12 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF('p', 'mm', 'a4');
                 
+                // Fetch trip members
+                const { data: members } = await sb
+                    .from('trip_members')
+                    .select('*')
+                    .eq('trip_id', currentTrip);
+                
                 const pageWidth = 210;
                 const pageHeight = 297;
                 const margin = 20;
@@ -5378,7 +5615,7 @@
                 const summaryItems = [
                     { label: 'Destination', value: tripData.overview.destination || 'Not set' },
                     { label: 'Duration', value: calculateDuration() + ' days' },
-                    { label: 'Travelers', value: Object.keys(sharedTripData.members || {}).length + ' people' },
+                    { label: 'Travelers', value: (members?.length || 0) + ' people' },
                     { label: 'Total Budget', value: formatCurrency(calculateTotalBudget()) }
                 ];
                 
@@ -5495,7 +5732,7 @@
                 }
                 
                 // Members
-                if (sharedTripData.members && Object.keys(sharedTripData.members).length > 0) {
+                if (members && members.length > 0) {
                     checkPageBreak(60);
                     yPos += 5;
                     doc.setFontSize(18);
@@ -5507,7 +5744,7 @@
                     doc.setFontSize(10);
                     doc.setTextColor(0, 0, 0);
                     
-                    Object.values(sharedTripData.members).forEach(member => {
+                    members.forEach(member => {
                         checkPageBreak(6);
                         doc.setFont(undefined, 'normal');
                         const roleEmoji = member.role === 'owner' ? '👑' : '👤';

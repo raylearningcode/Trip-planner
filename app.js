@@ -1387,12 +1387,15 @@
                 .maybeSingle();
             
             if (trip) {
+                console.log('📊 Loaded trip from DB:', trip);
                 tripData.overview = {
                     destination: trip.destination || 'Germany (Multi-City)',
                     departureDate: trip.departure_date || '2027-06-01',
                     returnDate: trip.return_date || '2027-06-14'
                 };
+                console.log('✅ tripData.overview after load:', tripData.overview);
             } else {
+                console.log('⚠️ No trip found in DB, using defaults');
                 // Initialize with default values if no trip found
                 tripData.overview = {
                     destination: 'Germany (Multi-City)',
@@ -1549,6 +1552,15 @@
             const destEl = document.getElementById('destination');
             const depEl = document.getElementById('departureDate');
             const retEl = document.getElementById('returnDate');
+            
+            console.log('📝 Setting DOM fields:', {
+                destination: tripData.overview.destination,
+                departureDate: tripData.overview.departureDate,
+                returnDate: tripData.overview.returnDate,
+                destElExists: !!destEl,
+                depElExists: !!depEl,
+                retElExists: !!retEl
+            });
             
             // Values are already set in tripData.overview with defaults
             if (destEl) destEl.value = tripData.overview.destination;
@@ -7523,6 +7535,43 @@
         // Initialize
         window.addEventListener('load', async () => {
             console.log('🎬 Window loaded, starting initialization...');
+            
+            // Auto-clear cache every 24 hours (except guest links)
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareToken = urlParams.get('share');
+            
+            if (!shareToken) {
+                // Not a guest link - check if cache should be cleared
+                const lastCacheClear = localStorage.getItem('lastCacheClear');
+                const now = Date.now();
+                const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+                
+                if (!lastCacheClear || (now - parseInt(lastCacheClear)) > TWENTY_FOUR_HOURS) {
+                    console.log('🧹 Auto-clearing cache (24h expired)');
+                    
+                    // Save share links before clearing
+                    const shareLinks = {};
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key.startsWith('share_')) {
+                            shareLinks[key] = localStorage.getItem(key);
+                        }
+                    }
+                    
+                    // Clear all cache
+                    localStorage.clear();
+                    
+                    // Restore share links
+                    Object.keys(shareLinks).forEach(key => {
+                        localStorage.setItem(key, shareLinks[key]);
+                    });
+                    
+                    // Mark cache clear time
+                    localStorage.setItem('lastCacheClear', now.toString());
+                    
+                    console.log('✅ Cache cleared, share links preserved');
+                }
+            }
             
             // Show loading skeletons
             showLoadingSkeletons();

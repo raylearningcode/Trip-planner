@@ -1525,7 +1525,6 @@
 
             renderAll();
             updateAllStats();
-            hideLoadingSkeletons();
             
             // Restore last viewed page
             const savedPage = localStorage.getItem('currentPage');

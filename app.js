@@ -1594,6 +1594,9 @@
         }, 500); // 500ms debounce for typing
         
         async function saveData() {
+            // Track call stack
+            console.log('💾 saveData() called from:', new Error().stack.split('\n')[2].trim());
+            
             // Skip save in guest mode
             if (!user || !currentTrip) {
                 console.log('⏭️ Skipping save (guest mode or no user)');
@@ -1619,6 +1622,12 @@
             const destEl = document.getElementById('destination');
             const depEl = document.getElementById('departureDate');
             const retEl = document.getElementById('returnDate');
+            
+            console.log('📝 DOM values before save:', {
+                dest: destEl?.value,
+                dep: depEl?.value,
+                ret: retEl?.value
+            });
             
             // Only update overview if DOM elements exist AND have values
             // Don't overwrite with empty strings!

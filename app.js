@@ -1620,11 +1620,19 @@
             const depEl = document.getElementById('departureDate');
             const retEl = document.getElementById('returnDate');
             
-            tripData.overview = {
-                destination: destEl ? destEl.value : tripData.overview.destination || '',
-                departureDate: depEl ? depEl.value : tripData.overview.departureDate || '',
-                returnDate: retEl ? retEl.value : tripData.overview.returnDate || ''
-            };
+            // Only update overview if DOM elements exist AND have values
+            // Don't overwrite with empty strings!
+            if (destEl && destEl.value) {
+                tripData.overview.destination = destEl.value;
+            }
+            if (depEl && depEl.value) {
+                tripData.overview.departureDate = depEl.value;
+            }
+            if (retEl && retEl.value) {
+                tripData.overview.returnDate = retEl.value;
+            }
+            
+            console.log('💾 Saving overview:', tripData.overview);
             
             try {
                 // Batch all saves together
@@ -7536,12 +7544,13 @@
         window.addEventListener('load', async () => {
             console.log('🎬 Window loaded, starting initialization...');
             
-            // Auto-clear old cache every 24 hours (except guest links and timestamp)
+            // Auto-clear cache DISABLED temporarily
+            // TODO: Re-enable after fixing Overview bug
+            /*
             const urlParams = new URLSearchParams(window.location.search);
             const shareToken = urlParams.get('share');
             
             if (!shareToken) {
-                // Not a guest link - check if cache should be cleared
                 const lastCacheClear = localStorage.getItem('lastCacheClear');
                 const now = Date.now();
                 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
@@ -7549,25 +7558,21 @@
                 if (!lastCacheClear || (now - parseInt(lastCacheClear)) > TWENTY_FOUR_HOURS) {
                     console.log('🧹 Auto-clearing old cache (24h expired)');
                     
-                    // Selective clear - keep share links and lastCacheClear
                     const keysToRemove = [];
                     for (let i = 0; i < localStorage.length; i++) {
                         const key = localStorage.key(i);
-                        // Keep share links and cache timestamp
                         if (!key.startsWith('share_') && key !== 'lastCacheClear') {
                             keysToRemove.push(key);
                         }
                     }
                     
-                    // Remove old cached data
                     keysToRemove.forEach(key => localStorage.removeItem(key));
-                    
-                    // Update cache clear timestamp
                     localStorage.setItem('lastCacheClear', now.toString());
                     
                     console.log(`✅ Cleared ${keysToRemove.length} cached items, preserved share links`);
                 }
             }
+            */
             
             // Show loading skeletons
             showLoadingSkeletons();

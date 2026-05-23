@@ -1578,6 +1578,12 @@
                 return;
             }
             
+            // Additional safety check for user.id
+            if (!user.id) {
+                console.error('❌ User object missing id');
+                return;
+            }
+            
             // Check if offline
             if (!navigator.onLine) {
                 console.log('📴 Offline - saving locally...');
@@ -1731,10 +1737,30 @@
                 );
                 
                 // Execute all saves in parallel
-                await Promise.all(savePromises);
+                const results = await Promise.allSettled(savePromises);
+                
+                // Check for failures
+                const failures = results.filter(r => r.status === 'rejected');
+                if (failures.length > 0) {
+                    console.error('❌ Save failures:', failures);
+                    failures.forEach((f, idx) => {
+                        console.error(`  Failed operation ${idx}:`, f.reason);
+                    });
+                    if (typeof toast !== 'undefined') {
+                        toast.error(`Failed to save ${failures.length} item(s)`, 5000);
+                    }
+                } else {
+                    console.log('✅ All data saved successfully');
+                }
                 
             } catch (err) {
-                console.error('Save error:', err);
+                console.error('❌ Save error:', err);
+                console.error('Error details:', {
+                    message: err.message,
+                    code: err.code,
+                    details: err.details,
+                    hint: err.hint
+                });
                 if (typeof toast !== 'undefined') {
                     toast.error('Failed to save: ' + err.message, 5000);
                 }

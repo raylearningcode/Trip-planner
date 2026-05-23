@@ -400,46 +400,6 @@
         window.importData = importData;
         window.exportAllData = exportAllData;
         
-        // Dark/Light Theme Toggle
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme') || 'dark';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            // Update button
-            const icon = document.getElementById('themeIcon');
-            const text = document.getElementById('themeText');
-            if (icon && text) {
-                if (newTheme === 'light') {
-                    icon.textContent = '☀️';
-                    text.textContent = 'Light Mode';
-                } else {
-                    icon.textContent = '🌙';
-                    text.textContent = 'Dark Mode';
-                }
-            }
-        }
-        
-        // Initialize theme on load
-        (function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            
-            const icon = document.getElementById('themeIcon');
-            const text = document.getElementById('themeText');
-            if (icon && text) {
-                if (savedTheme === 'light') {
-                    icon.textContent = '☀️';
-                    text.textContent = 'Light Mode';
-                }
-            }
-        })();
-        
-        window.toggleTheme = toggleTheme;
-        
         // ========================================
         // COMPREHENSIVE ERROR LOGGING
         // ========================================

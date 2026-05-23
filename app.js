@@ -1641,6 +1641,10 @@
                         data: tripData.group || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`group save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 savePromises.push(
@@ -1650,6 +1654,10 @@
                         data: tripData.destinations || { main: [], optional: [], other: [], restaurants: [] },
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`destinations save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 savePromises.push(
@@ -1659,6 +1667,10 @@
                         data: tripData.dayPlans || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`itinerary save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 savePromises.push(
@@ -1668,6 +1680,10 @@
                         data: tripData.sharedExpenses || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`shared_expenses save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 savePromises.push(
@@ -1677,6 +1693,10 @@
                         data: tripData.bookings || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`bookings save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 savePromises.push(
@@ -1686,6 +1706,10 @@
                         data: tripData.todos || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`todos save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 // Save shared checklist template
@@ -1696,6 +1720,10 @@
                         data: tripData.sharedChecklist || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`shared_checklist save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 // Save documents
@@ -1706,6 +1734,10 @@
                         data: tripData.documents || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`documents save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 // Save emergency contacts
@@ -1716,6 +1748,10 @@
                         data: tripData.emergencyContacts || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`emergency_contacts save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 // Save important info
@@ -1726,6 +1762,10 @@
                         data: tripData.importantInfo || [],
                         last_edited_by: user.id
                     }, { onConflict: 'trip_id,data_type' })
+                    .then(result => {
+                        if (result.error) throw new Error(`important_info save failed: ${result.error.message}`);
+                        return result;
+                    })
                 );
                 
                 savePromises.push(
@@ -8179,8 +8219,8 @@
             window.location.href = 'index.html';
         }
 
-        // Auto-save every 30 seconds
-        setInterval(saveDataSync, 30000);
+        // Auto-save disabled - causing 400 error loop
+        // setInterval(saveDataSync, 30000);
         
         // Attach event listeners for toggle functions (must be after DOM loads)
         

@@ -944,6 +944,212 @@
         }
         
         // ========================================
+        // KEYBOARD SHORTCUTS
+        // ========================================
+        
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + S = Save
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveData();
+                const toast = document.createElement('div');
+                toast.style.cssText = `position: fixed; bottom: 80px; right: 20px; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10000;`;
+                toast.innerHTML = `💾 Saved`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 1500);
+            }
+            
+            // Ctrl/Cmd + K = Search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                showGlobalSearch();
+            }
+            
+            // Ctrl/Cmd + Z = Undo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            }
+        });
+        
+        // ========================================
+        // UNDO/REDO SYSTEM
+        // ========================================
+        
+        let undoStack = [];
+        const MAX_UNDO = 20;
+        
+        function saveToUndoStack() {
+            const snapshot = JSON.parse(JSON.stringify(tripData));
+            undoStack.push(snapshot);
+            if (undoStack.length > MAX_UNDO) {
+                undoStack.shift(); // Remove oldest
+            }
+        }
+        
+        function undo() {
+            if (undoStack.length === 0) {
+                const toast = document.createElement('div');
+                toast.style.cssText = `position: fixed; bottom: 80px; right: 20px; background: #6c757d; color: white; padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 10000;`;
+                toast.innerHTML = `Nothing to undo`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 1500);
+                return;
+            }
+            
+            const previous = undoStack.pop();
+            Object.assign(tripData, previous);
+            renderAll();
+            saveData();
+            
+            const toast = document.createElement('div');
+            toast.style.cssText = `position: fixed; bottom: 80px; right: 20px; background: linear-gradient(135deg, #6366f1, #a855f7); color: white; padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 10000;`;
+            toast.innerHTML = `↩️ Undone`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 1500);
+        }
+        
+        // Save undo snapshot before major actions
+        window.addEventListener('beforeinput', () => {
+            if (Math.random() < 0.1) saveToUndoStack(); // 10% chance to avoid too many snapshots
+        });
+        
+        // ========================================
+        // GLOBAL SEARCH
+        // ========================================
+        
+        function showGlobalSearch() {
+            showModal(`
+                <div class="modal-header">
+                    <div class="modal-title">🔍 Search Trip</div>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="globalSearchInput" placeholder="Search destinations, bookings, notes, activities..." 
+                           style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; 
+                                  background: var(--bg-main); color: var(--text-primary); font-size: 14px; margin-bottom: 16px;"
+                           oninput="performGlobalSearch(this.value)" autofocus>
+                    <div id="searchResults" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+            `);
+        }
+        
+        function performGlobalSearch(query) {
+            if (!query || query.length < 2) {
+                document.getElementById('searchResults').innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Type to search...</p>';
+                return;
+            }
+            
+            const results = [];
+            const lowerQuery = query.toLowerCase();
+            
+            // Search destinations
+            ['main', 'optional', 'other', 'restaurants'].forEach(type => {
+                (tripData.destinations[type] || []).forEach((dest, idx) => {
+                    if (dest.name?.toLowerCase().includes(lowerQuery) || dest.address?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Destination', name: dest.name, page: 'destinations', icon: '📍' });
+                    }
+                });
+            });
+            
+            // Search bookings
+            (tripData.bookings || []).forEach(booking => {
+                if (booking.type?.toLowerCase().includes(lowerQuery) || booking.name?.toLowerCase().includes(lowerQuery)) {
+                    results.push({ type: 'Booking', name: `${booking.type}: ${booking.name}`, page: 'bookings', icon: '🎫' });
+                }
+            });
+            
+            // Search itinerary
+            (tripData.dayPlans || []).forEach((day, idx) => {
+                if (day.city?.toLowerCase().includes(lowerQuery)) {
+                    results.push({ type: 'Itinerary', name: `Day ${idx + 1} - ${day.city}`, page: 'itinerary', icon: '📅' });
+                }
+                if (day.collaborativeNotes?.toLowerCase().includes(lowerQuery)) {
+                    results.push({ type: 'Note', name: `Day ${idx + 1} notes`, page: 'itinerary', icon: '💬' });
+                }
+                (day.activities || []).forEach(act => {
+                    if (act.activity?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Activity', name: act.activity, page: 'itinerary', icon: '⚡' });
+                    }
+                });
+            });
+            
+            // Search packing
+            (tripData.packing || []).forEach(cat => {
+                cat.items.forEach(item => {
+                    if (item.name?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Packing', name: item.name, page: 'packing', icon: '🎒' });
+                    }
+                });
+            });
+            
+            // Display results
+            const resultsHTML = results.length > 0 ? results.map(r => `
+                <div onclick="showPage('${r.page}'); closeModal();" style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
+                     onmouseover="this.style.background='var(--primary)'; this.style.color='white'" 
+                     onmouseout="this.style.background='var(--bg-hover)'; this.style.color='var(--text-primary)'">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">${r.icon} ${r.type}</div>
+                    <div style="font-weight: 600;">${r.name}</div>
+                </div>
+            `).join('') : '<p style="color: var(--text-secondary); text-align: center; padding: 40px;">No results found</p>';
+            
+            document.getElementById('searchResults').innerHTML = resultsHTML;
+        }
+        
+        window.showGlobalSearch = showGlobalSearch;
+        window.performGlobalSearch = performGlobalSearch;
+        
+        // ========================================
+        // LOADING SKELETONS
+        // ========================================
+        
+        function showLoadingSkeletons() {
+            const pages = ['overview', 'itinerary', 'destinations', 'bookings'];
+            pages.forEach(pageId => {
+                const page = document.getElementById(pageId);
+                if (!page) return;
+                
+                const skeletonHTML = `
+                    <div class="skeleton-container" style="padding: 20px;">
+                        <div class="skeleton skeleton-title"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-card"></div>
+                        <div class="skeleton skeleton-text" style="width: 80%;"></div>
+                        <div class="skeleton skeleton-text" style="width: 60%;"></div>
+                    </div>
+                `;
+                
+                const existingContent = page.innerHTML;
+                page.setAttribute('data-original-content', existingContent);
+                page.innerHTML = skeletonHTML;
+            });
+        }
+        
+        function hideLoadingSkeletons() {
+            const pages = ['overview', 'itinerary', 'destinations', 'bookings'];
+            pages.forEach(pageId => {
+                const page = document.getElementById(pageId);
+                if (!page) return;
+                
+                const originalContent = page.getAttribute('data-original-content');
+                if (originalContent) {
+                    page.innerHTML = originalContent;
+                    page.removeAttribute('data-original-content');
+                }
+            });
+        }
+        
+        window.hideLoadingSkeletons = hideLoadingSkeletons;
+        
+        // ========================================
+        // END LOADING SKELETONS
+        // ========================================
+        
+        // ========================================
+        // END KEYBOARD SHORTCUTS & SEARCH
+        // ========================================
+        
+        // ========================================
         // END OFFLINE MODE
         // ========================================
 
@@ -1341,6 +1547,7 @@
 
             renderAll();
             updateAllStats();
+            hideLoadingSkeletons();
             
             // Restore last viewed page
             const savedPage = localStorage.getItem('currentPage');
@@ -2010,84 +2217,172 @@
             const departure = document.getElementById('departureDate').value;
             const returnDate = document.getElementById('returnDate').value;
             
-            // Create printable content
+            // Improved PDF with better styling
             let content = `
-                <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px;">
-                    <div style="text-align: center; margin-bottom: 40px;">
-                        <h1 style="font-size: 36px; color: #6366f1; margin-bottom: 8px;">✈️ ${tripName}</h1>
-                        <p style="font-size: 18px; color: #64748b;">
-                            ${departure ? new Date(departure).toLocaleDateString() : 'Date TBD'} - 
-                            ${returnDate ? new Date(returnDate).toLocaleDateString() : 'Date TBD'}
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 60px 40px; background: white;">
+                    <!-- Header -->
+                    <div style="text-align: center; margin-bottom: 50px; padding-bottom: 30px; border-bottom: 3px solid #6366f1;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">✈️</div>
+                        <h1 style="font-size: 42px; color: #1e293b; margin: 0 0 12px 0; font-weight: 700; letter-spacing: -1px;">${tripName}</h1>
+                        <p style="font-size: 18px; color: #64748b; margin: 0;">
+                            ${departure ? new Date(departure).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date TBD'} - 
+                            ${returnDate ? new Date(returnDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date TBD'}
                         </p>
                     </div>
                     
-                    <div style="margin-bottom: 30px;">
-                        <h2 style="border-bottom: 2px solid #6366f1; padding-bottom: 8px; margin-bottom: 16px;">📍 Destinations</h2>
+                    <!-- Quick Stats -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 50px; page-break-inside: avoid;">
+                        <div style="background: #f8fafc; padding: 24px; border-radius: 12px; text-align: center; border-left: 4px solid #6366f1;">
+                            <div style="font-size: 32px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">${tripData.dayPlans?.length || 0}</div>
+                            <div style="font-size: 14px; color: #64748b; font-weight: 600;">DAYS</div>
+                        </div>
+                        <div style="background: #f8fafc; padding: 24px; border-radius: 12px; text-align: center; border-left: 4px solid #a855f7;">
+                            <div style="font-size: 32px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">${(tripData.destinations.main?.length || 0) + (tripData.destinations.optional?.length || 0)}</div>
+                            <div style="font-size: 14px; color: #64748b; font-weight: 600;">DESTINATIONS</div>
+                        </div>
+                        <div style="background: #f8fafc; padding: 24px; border-radius: 12px; text-align: center; border-left: 4px solid #10b981;">
+                            <div style="font-size: 32px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">${tripData.bookings?.length || 0}</div>
+                            <div style="font-size: 14px; color: #64748b; font-weight: 600;">BOOKINGS</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Itinerary Section -->
+                    <div style="page-break-before: always; margin-bottom: 50px;">
+                        <h2 style="font-size: 28px; color: #1e293b; margin-bottom: 30px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">
+                            📅 Day-by-Day Itinerary
+                        </h2>
             `;
             
-            // Add destinations
-            ['main', 'optional', 'other'].forEach(type => {
-                const dests = tripData.destinations[type] || [];
-                if (dests.length > 0) {
-                    content += `<h3 style="margin-top: 16px; color: #64748b;">${type.charAt(0).toUpperCase() + type.slice(1)} Destinations</h3><ul>`;
-                    dests.forEach(d => {
-                        content += `<li style="margin: 8px 0;">${d.city}, ${d.country}${d.notes ? ` - ${d.notes}` : ''}</li>`;
-                    });
-                    content += `</ul>`;
-                }
-            });
-            
-            content += `</div><div style="margin-bottom: 30px;">
-                        <h2 style="border-bottom: 2px solid #6366f1; padding-bottom: 8px; margin-bottom: 16px;">🗓️ Itinerary</h2>`;
-            
-            // Add itinerary
+            // Add detailed itinerary
             if (tripData.dayPlans && tripData.dayPlans.length > 0) {
                 tripData.dayPlans.forEach((day, idx) => {
+                    const activities = Array.isArray(day.activities) ? day.activities : 
+                                     typeof day.activities === 'string' ? day.activities.split('\n').filter(Boolean) : [];
+                    
                     content += `
-                        <div style="margin-bottom: 20px;">
-                            <h3 style="color: #6366f1;">Day ${idx + 1}${day.date ? ` - ${new Date(day.date).toLocaleDateString()}` : ''}</h3>
-                            <p style="font-weight: 600; margin: 4px 0;">📍 ${day.city || 'Location TBD'}</p>
-                            <p style="margin: 4px 0;">${day.activities || 'No activities planned yet'}</p>
+                        <div style="margin-bottom: 40px; page-break-inside: avoid; background: #f8fafc; padding: 24px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
+                                <h3 style="font-size: 24px; color: #1e293b; margin: 0; font-weight: 700;">Day ${idx + 1}</h3>
+                                <span style="font-size: 14px; color: #64748b; font-weight: 600;">${day.date ? new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
+                            </div>
+                            <p style="font-size: 16px; color: #6366f1; margin: 0 0 16px 0; font-weight: 600;">📍 ${day.city || 'Location TBD'}</p>
+                            
+                            ${activities.length > 0 ? `
+                                <div style="margin-top: 16px;">
+                                    ${activities.map(act => {
+                                        const actObj = typeof act === 'object' ? act : { activity: act };
+                                        return `
+                                            <div style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+                                                <div style="display: flex; gap: 12px; align-items: start;">
+                                                    ${actObj.timeStart ? `<span style="color: #6366f1; font-weight: 600; font-size: 14px; min-width: 80px;">${actObj.timeStart}</span>` : ''}
+                                                    <div style="flex: 1;">
+                                                        <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">${actObj.activity || actObj}</div>
+                                                        ${actObj.location ? `<div style="font-size: 13px; color: #64748b;">📍 ${actObj.location}</div>` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : '<p style="color: #94a3b8; font-style: italic;">No activities planned yet</p>'}
+                            
+                            ${day.collaborativeNotes ? `
+                                <div style="margin-top: 20px; padding: 16px; background: white; border-radius: 8px; border-left: 3px solid #a855f7;">
+                                    <div style="font-size: 12px; color: #a855f7; font-weight: 700; margin-bottom: 8px; text-transform: uppercase;">💬 Shared Notes</div>
+                                    <p style="color: #475569; white-space: pre-wrap; margin: 0; line-height: 1.6;">${day.collaborativeNotes}</p>
+                                </div>
+                            ` : ''}
                         </div>
                     `;
                 });
             } else {
-                content += `<p style="color: #64748b;">No itinerary planned yet.</p>`;
+                content += `<p style="color: #94a3b8; font-style: italic; text-align: center; padding: 40px;">No itinerary planned yet</p>`;
             }
             
-            content += `</div><div style="margin-bottom: 30px;">
-                        <h2 style="border-bottom: 2px solid #6366f1; padding-bottom: 8px; margin-bottom: 16px;">🎫 Bookings</h2>`;
+            content += `</div>`;
+            
+            // Add destinations
+            if ((tripData.destinations.main?.length || 0) + (tripData.destinations.optional?.length || 0) > 0) {
+                content += `
+                    <div style="page-break-before: always; margin-bottom: 50px;">
+                        <h2 style="font-size: 28px; color: #1e293b; margin-bottom: 30px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">
+                            📍 Destinations
+                        </h2>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                `;
+                
+                [...(tripData.destinations.main || []), ...(tripData.destinations.optional || [])].forEach(dest => {
+                    content += `
+                        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                            <h4 style="font-size: 18px; color: #1e293b; margin: 0 0 8px 0; font-weight: 700;">${dest.city}, ${dest.country}</h4>
+                            ${dest.notes ? `<p style="font-size: 14px; color: #64748b; margin: 0;">${dest.notes}</p>` : ''}
+                        </div>
+                    `;
+                });
+                
+                content += `</div></div>`;
+            }
             
             // Add bookings
             if (tripData.bookings && tripData.bookings.length > 0) {
-                content += `<table style="width: 100%; border-collapse: collapse;">
-                    <thead><tr style="background: #f1f5f9;">
-                        <th style="padding: 8px; text-align: left; border: 1px solid #e2e8f0;">Type</th>
-                        <th style="padding: 8px; text-align: left; border: 1px solid #e2e8f0;">Name</th>
-                        <th style="padding: 8px; text-align: left; border: 1px solid #e2e8f0;">Date</th>
-                        <th style="padding: 8px; text-align: left; border: 1px solid #e2e8f0;">Confirmation</th>
-                    </tr></thead><tbody>`;
+                content += `
+                    <div style="page-break-before: always; margin-bottom: 50px;">
+                        <h2 style="font-size: 28px; color: #1e293b; margin-bottom: 30px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">
+                            🎫 Bookings & Reservations
+                        </h2>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f1f5f9;">
+                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;">Type</th>
+                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;">Details</th>
+                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;">Date & Time</th>
+                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;">Confirmation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
                 
-                tripData.bookings.forEach(b => {
+                tripData.bookings.forEach((b, idx) => {
                     content += `
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0;">${b.type}</td>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0;">${b.name}</td>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0;">${b.datetime ? new Date(b.datetime).toLocaleDateString() : 'TBD'}</td>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0;">${b.confirmation || '-'}</td>
+                        <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                            <td style="padding: 16px; font-weight: 600; color: #6366f1;">${b.type}</td>
+                            <td style="padding: 16px; color: #1e293b;">${b.name}</td>
+                            <td style="padding: 16px; color: #64748b;">${b.datetime ? new Date(b.datetime).toLocaleString() : 'TBD'}</td>
+                            <td style="padding: 16px; font-family: monospace; color: #10b981; font-weight: 600;">${b.confirmation || '-'}</td>
                         </tr>
                     `;
                 });
                 
-                content += `</tbody></table>`;
-            } else {
-                content += `<p style="color: #64748b;">No bookings yet.</p>`;
+                content += `</tbody></table></div>`;
+            }
+            
+            // Add emergency contacts
+            if (tripData.emergencyContacts && tripData.emergencyContacts.length > 0) {
+                content += `
+                    <div style="page-break-before: always; margin-bottom: 50px;">
+                        <h2 style="font-size: 28px; color: #ef4444; margin-bottom: 30px; padding-bottom: 12px; border-bottom: 2px solid #fee2e2; font-weight: 700;">
+                            🚨 Emergency Contacts
+                        </h2>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                `;
+                
+                tripData.emergencyContacts.forEach(contact => {
+                    content += `
+                        <div style="background: #fef2f2; padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
+                            <h4 style="font-size: 18px; color: #1e293b; margin: 0 0 8px 0; font-weight: 700;">${contact.name}</h4>
+                            <p style="font-size: 16px; color: #ef4444; margin: 4px 0; font-weight: 600;">📞 ${contact.phone}</p>
+                            ${contact.relationship ? `<p style="font-size: 14px; color: #64748b; margin: 4px 0;">${contact.relationship}</p>` : ''}
+                        </div>
+                    `;
+                });
+                
+                content += `</div></div>`;
             }
             
             content += `
-                    </div>
-                    <div style="text-align: center; margin-top: 60px; padding-top: 20px; border-top: 2px solid #e2e8f0; color: #94a3b8; font-size: 14px;">
-                        Generated by Trip Planner Pro • ${new Date().toLocaleDateString()}
+                    <div style="text-align: center; margin-top: 80px; padding-top: 40px; border-top: 2px solid #e2e8f0; color: #94a3b8; font-size: 14px;">
+                        <p style="margin: 0;">Generated by Trip Planner Pro</p>
+                        <p style="margin: 8px 0 0 0;">${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                     </div>
                 </div>
             `;
@@ -2098,23 +2393,118 @@
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>${tripName} - Trip Itinerary</title>
+                    <title>${tripName} - Complete Itinerary</title>
                     <style>
                         @media print {
-                            button { display: none; }
+                            button { display: none !important; }
+                            @page { margin: 1.5cm; }
                         }
+                        body { margin: 0; padding: 0; }
                     </style>
                 </head>
                 <body>
                     ${content}
                     <div style="text-align: center; margin: 40px 0;">
-                        <button onclick="window.print()" style="background: #6366f1; color: white; padding: 12px 32px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                        <button onclick="window.print()" style="background: linear-gradient(135deg, #6366f1, #a855f7); color: white; padding: 16px 48px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
                             🖨️ Print / Save as PDF
                         </button>
                     </div>
                 </body>
                 </html>
             `);
+            printWindow.document.close();
+        }
+        
+        // Print single day
+        function printSingleDay(dayIndex) {
+            const day = tripData.dayPlans[dayIndex];
+            if (!day) return;
+            
+            const tripName = document.getElementById('destination').value || 'My Trip';
+            const activities = Array.isArray(day.activities) ? day.activities : 
+                             typeof day.activities === 'string' ? day.activities.split('\n').filter(Boolean) : [];
+            
+            const content = `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 60px 40px; background: white;">
+                    <div style="text-align: center; margin-bottom: 50px; padding-bottom: 30px; border-bottom: 3px solid #6366f1;">
+                        <h1 style="font-size: 42px; color: #1e293b; margin: 0 0 12px 0; font-weight: 700;">${tripName}</h1>
+                        <p style="font-size: 24px; color: #6366f1; margin: 0; font-weight: 600;">Day ${dayIndex + 1}</p>
+                        <p style="font-size: 18px; color: #64748b; margin: 8px 0 0 0;">
+                            ${day.date ? new Date(day.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
+                        </p>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 32px; border-radius: 16px; margin-bottom: 40px; border-left: 6px solid #6366f1;">
+                        <h2 style="font-size: 28px; color: #1e293b; margin: 0 0 16px 0; font-weight: 700;">📍 ${day.city || 'Location TBD'}</h2>
+                        
+                        ${activities.length > 0 ? `
+                            <div style="margin-top: 24px;">
+                                ${activities.map((act, idx) => {
+                                    const actObj = typeof act === 'object' ? act : { activity: act };
+                                    return `
+                                        <div style="padding: 20px 0; border-bottom: ${idx < activities.length - 1 ? '1px solid #e2e8f0' : 'none'};">
+                                            <div style="display: flex; gap: 20px; align-items: start;">
+                                                ${actObj.timeStart ? `
+                                                    <div style="min-width: 100px;">
+                                                        <div style="background: #6366f1; color: white; padding: 8px 16px; border-radius: 8px; text-align: center; font-weight: 700; font-size: 16px;">
+                                                            ${actObj.timeStart}
+                                                        </div>
+                                                    </div>
+                                                ` : ''}
+                                                <div style="flex: 1;">
+                                                    <h3 style="font-size: 20px; font-weight: 700; color: #1e293b; margin: 0 0 8px 0;">${actObj.activity || actObj}</h3>
+                                                    ${actObj.location ? `<p style="font-size: 15px; color: #64748b; margin: 0;">📍 ${actObj.location}</p>` : ''}
+                                                    ${actObj.notes ? `<p style="font-size: 14px; color: #64748b; margin: 8px 0 0 0; font-style: italic;">${actObj.notes}</p>` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        ` : '<p style="color: #94a3b8; font-style: italic; text-align: center; padding: 40px; font-size: 18px;">No activities planned yet</p>'}
+                    </div>
+                    
+                    ${day.collaborativeNotes ? `
+                        <div style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); padding: 32px; border-radius: 16px; border-left: 6px solid #a855f7;">
+                            <h3 style="font-size: 20px; color: #a855f7; margin: 0 0 16px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">💬 Shared Notes</h3>
+                            <p style="color: #1e293b; white-space: pre-wrap; margin: 0; line-height: 1.8; font-size: 16px;">${day.collaborativeNotes}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="text-align: center; margin-top: 80px; padding-top: 40px; border-top: 2px solid #e2e8f0; color: #94a3b8; font-size: 14px;">
+                        Generated by Trip Planner Pro • ${new Date().toLocaleDateString()}
+                    </div>
+                </div>
+            `;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${tripName} - Day ${dayIndex + 1}</title>
+                    <style>
+                        @media print {
+                            button { display: none !important; }
+                            @page { margin: 1.5cm; }
+                        }
+                        body { margin: 0; padding: 0; }
+                    </style>
+                </head>
+                <body>
+                    ${content}
+                    <div style="text-align: center; margin: 40px 0;">
+                        <button onclick="window.print()" style="background: linear-gradient(135deg, #6366f1, #a855f7); color: white; padding: 16px 48px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+                            🖨️ Print Day ${dayIndex + 1}
+                        </button>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+        
+        window.printSingleDay = printSingleDay;
             
             // Enhanced PDF with emergency contacts and notes
             const enhancedContent = `
@@ -2207,13 +2597,34 @@
         }
         function showPage(pageId) {
             currentPage = pageId;
-            localStorage.setItem('currentPage', pageId); // Save current page
+            localStorage.setItem('currentPage', pageId);
             
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            // Smooth fade transition
+            const allPages = document.querySelectorAll('.page');
+            const targetPage = document.getElementById(pageId);
+            
+            // Fade out current page
+            allPages.forEach(p => {
+                if (p.classList.contains('active')) {
+                    p.style.opacity = '0';
+                    setTimeout(() => {
+                        p.classList.remove('active');
+                        p.style.opacity = '1';
+                    }, 150);
+                }
+            });
+            
+            // Fade in new page
+            setTimeout(() => {
+                targetPage.classList.add('active');
+                targetPage.style.opacity = '0';
+                setTimeout(() => {
+                    targetPage.style.opacity = '1';
+                }, 10);
+            }, 150);
+            
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.querySelectorAll('.bottom-nav-item').forEach(n => n.classList.remove('active'));
-            
-            document.getElementById(pageId).classList.add('active');
             
             // Update sidebar nav
             const sidebarNav = document.querySelector(`.nav-item[onclick*="'${pageId}'"]`);
@@ -5790,7 +6201,8 @@
                     
                     <div style="display: flex; gap: 12px; margin-bottom: 20px;">
                         <button class="btn btn-success btn-sm" onclick="addActivity(${idx})" style="flex: 1;">+ Add Activity</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteDayPlan(${idx}, this)">🗑️ Delete Day</button>
+                        <button class="btn btn-secondary btn-sm" onclick="printSingleDay(${idx})">🖨️ Print</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteDayPlan(${idx}, this)">🗑️ Delete</button>
                     </div>
                     
                     <!-- Collaborative Notes - Full Width -->
@@ -7055,6 +7467,9 @@
         // Initialize
         window.addEventListener('load', async () => {
             console.log('🎬 Window loaded, starting initialization...');
+            
+            // Show loading skeletons
+            showLoadingSkeletons();
             
             try {
                 // Check for share link (guest mode)

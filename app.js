@@ -1382,7 +1382,7 @@
             // Load trip details (shared) from trips table
             const { data: trip } = await sb
                 .from('trips')
-                .select('destination, departure_date, return_date, emergency_contacts, important_info')
+                .select('destination, departure_date, return_date')
                 .eq('id', currentTrip)
                 .maybeSingle();
             
@@ -1392,8 +1392,6 @@
                     departureDate: trip.departure_date || '',
                     returnDate: trip.return_date || ''
                 };
-                tripData.emergencyContacts = trip.emergency_contacts || [];
-                tripData.importantInfo = trip.important_info || [];
             } else {
                 // Initialize with empty values if no trip found
                 tripData.overview = {
@@ -1437,6 +1435,16 @@
                     if (row.data_type === 'shared_checklist') tripData.sharedChecklist = row.data;
                     if (row.data_type === 'documents') tripData.documents = row.data;
                 }
+            }
+            
+            // Load emergency contacts and important info from localStorage (temporary workaround)
+            try {
+                const storedEmergency = localStorage.getItem(`emergency_${currentTrip}`);
+                const storedInfo = localStorage.getItem(`important_${currentTrip}`);
+                if (storedEmergency) tripData.emergencyContacts = JSON.parse(storedEmergency);
+                if (storedInfo) tripData.importantInfo = JSON.parse(storedInfo);
+            } catch (e) {
+                console.log('No stored emergency/important data');
             }
             
             // Load trip members from database and sync with tripData.group
@@ -1741,16 +1749,21 @@
                     })
                 );
                 
-                // Emergency contacts and important info are stored in trip overview
-                // Not as separate shared_trip_data entries
+                // Note: emergency_contacts and important_info are stored within the group data object
+                // They can't be separate data_types due to CHECK constraint
+                // Temporary workaround: store in localStorage
+                try {
+                    localStorage.setItem(`emergency_${currentTrip}`, JSON.stringify(tripData.emergencyContacts || []));
+                    localStorage.setItem(`important_${currentTrip}`, JSON.stringify(tripData.importantInfo || []));
+                } catch (e) {
+                    console.warn('Failed to save emergency/important to localStorage');
+                }
                 
                 savePromises.push(
                     sb.from('trips').update({
                         destination: tripData.overview.destination,
                         departure_date: tripData.overview.departureDate,
-                        return_date: tripData.overview.returnDate,
-                        emergency_contacts: tripData.emergencyContacts || [],
-                        important_info: tripData.importantInfo || []
+                        return_date: tripData.overview.returnDate
                     }).eq('id', currentTrip)
                 );
                 

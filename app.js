@@ -2558,7 +2558,7 @@
             printWindow.document.close();
             
             toast.success('Opening printable itinerary...');
-        }
+        
 
         async function onTripDateChange() {
             const oldDeparture = tripData.overview.departureDate;

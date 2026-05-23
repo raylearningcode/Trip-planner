@@ -7536,7 +7536,7 @@
         window.addEventListener('load', async () => {
             console.log('🎬 Window loaded, starting initialization...');
             
-            // Auto-clear cache every 24 hours (except guest links)
+            // Auto-clear old cache every 24 hours (except guest links and timestamp)
             const urlParams = new URLSearchParams(window.location.search);
             const shareToken = urlParams.get('share');
             
@@ -7547,29 +7547,25 @@
                 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
                 
                 if (!lastCacheClear || (now - parseInt(lastCacheClear)) > TWENTY_FOUR_HOURS) {
-                    console.log('🧹 Auto-clearing cache (24h expired)');
+                    console.log('🧹 Auto-clearing old cache (24h expired)');
                     
-                    // Save share links before clearing
-                    const shareLinks = {};
+                    // Selective clear - keep share links and lastCacheClear
+                    const keysToRemove = [];
                     for (let i = 0; i < localStorage.length; i++) {
                         const key = localStorage.key(i);
-                        if (key.startsWith('share_')) {
-                            shareLinks[key] = localStorage.getItem(key);
+                        // Keep share links and cache timestamp
+                        if (!key.startsWith('share_') && key !== 'lastCacheClear') {
+                            keysToRemove.push(key);
                         }
                     }
                     
-                    // Clear all cache
-                    localStorage.clear();
+                    // Remove old cached data
+                    keysToRemove.forEach(key => localStorage.removeItem(key));
                     
-                    // Restore share links
-                    Object.keys(shareLinks).forEach(key => {
-                        localStorage.setItem(key, shareLinks[key]);
-                    });
-                    
-                    // Mark cache clear time
+                    // Update cache clear timestamp
                     localStorage.setItem('lastCacheClear', now.toString());
                     
-                    console.log('✅ Cache cleared, share links preserved');
+                    console.log(`✅ Cleared ${keysToRemove.length} cached items, preserved share links`);
                 }
             }
             

@@ -1550,9 +1550,14 @@
             const depEl = document.getElementById('departureDate');
             const retEl = document.getElementById('returnDate');
             
-            if (destEl) destEl.value = tripData.overview.destination || 'Germany (Multi-City)';
-            if (depEl) depEl.value = tripData.overview.departureDate || '2027-06-01';
-            if (retEl) retEl.value = tripData.overview.returnDate || '2027-06-14';
+            // Set defaults if data is empty
+            if (!tripData.overview.destination) tripData.overview.destination = 'Germany (Multi-City)';
+            if (!tripData.overview.departureDate) tripData.overview.departureDate = '2027-06-01';
+            if (!tripData.overview.returnDate) tripData.overview.returnDate = '2027-06-14';
+            
+            if (destEl) destEl.value = tripData.overview.destination;
+            if (depEl) depEl.value = tripData.overview.departureDate;
+            if (retEl) retEl.value = tripData.overview.returnDate;
 
             renderAll();
             updateAllStats();

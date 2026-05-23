@@ -2896,6 +2896,7 @@
 
         function renderBookings() {
             const tbody = document.getElementById('bookingsTableBody');
+            if (!tbody) return; // Safety check
             tbody.innerHTML = '';
 
             tripData.bookings.forEach((booking, idx) => {
@@ -5246,6 +5247,7 @@
 
         function renderSharedExpenses() {
             const tbody = document.getElementById('sharedExpensesBody');
+            if (!tbody) return; // Safety check
             tbody.innerHTML = '';
 
             const members = tripData.group.map(m => m.name).filter(n => n);
@@ -5334,6 +5336,7 @@
             });
 
             const summary = document.getElementById('settlementSummary');
+            if (!summary) return; // Safety check
             summary.innerHTML = '';
 
             const sorted = Object.entries(balances).sort((a, b) => b[1] - a[1]);
@@ -6065,6 +6068,7 @@
 
         function renderDayPlans() {
             const container = document.getElementById('dayPlansContainer');
+            if (!container) return; // Safety check
             container.innerHTML = '';
             
             // Detect conflicts first

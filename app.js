@@ -7544,9 +7544,7 @@
         window.addEventListener('load', async () => {
             console.log('🎬 Window loaded, starting initialization...');
             
-            // Auto-clear cache DISABLED temporarily
-            // TODO: Re-enable after fixing Overview bug
-            /*
+            // Auto-clear cache every 24 hours (preserves important data)
             const urlParams = new URLSearchParams(window.location.search);
             const shareToken = urlParams.get('share');
             
@@ -7561,7 +7559,11 @@
                     const keysToRemove = [];
                     for (let i = 0; i < localStorage.length; i++) {
                         const key = localStorage.key(i);
-                        if (!key.startsWith('share_') && key !== 'lastCacheClear') {
+                        // Preserve: share links, lastCacheClear, emergency contacts, important info
+                        if (!key.startsWith('share_') && 
+                            key !== 'lastCacheClear' && 
+                            !key.startsWith('emergency_') && 
+                            !key.startsWith('important_')) {
                             keysToRemove.push(key);
                         }
                     }
@@ -7569,10 +7571,9 @@
                     keysToRemove.forEach(key => localStorage.removeItem(key));
                     localStorage.setItem('lastCacheClear', now.toString());
                     
-                    console.log(`✅ Cleared ${keysToRemove.length} cached items, preserved share links`);
+                    console.log(`✅ Cleared ${keysToRemove.length} cached items, preserved share links + emergency data`);
                 }
             }
-            */
             
             // Show loading skeletons
             showLoadingSkeletons();

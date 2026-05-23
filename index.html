@@ -50,10 +50,13 @@
     
     <!-- Light Theme CSS -->
     <style>
+        /* Light Theme Variables */
         [data-theme="light"] {
             --bg-main: #ffffff;
             --bg-secondary: #f8f9fa;
             --bg-hover: #e9ecef;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --glass-border: rgba(0, 0, 0, 0.1);
             --text-primary: #1a1a2e;
             --text-secondary: #495057;
             --text-tertiary: #6c757d;
@@ -66,39 +69,206 @@
             --danger: #ef4444;
         }
         
+        /* Body & Page */
         [data-theme="light"] body {
-            background: #f8f9fa;
-            color: #1a1a2e;
-        }
-        
-        [data-theme="light"] .sidebar {
-            background: #ffffff;
-            border-right: 1px solid #dee2e6;
-        }
-        
-        [data-theme="light"] .card {
-            background: #ffffff;
-            border: 1px solid #dee2e6;
+            background: #f8f9fa !important;
+            color: #1a1a2e !important;
         }
         
         [data-theme="light"] .page {
-            background: #f8f9fa;
+            background: #f8f9fa !important;
         }
         
+        /* Sidebar */
+        [data-theme="light"] .sidebar {
+            background: #ffffff !important;
+            border-right: 1px solid #dee2e6;
+        }
+        
+        [data-theme="light"] .sidebar-header {
+            background: linear-gradient(135deg, #6366f1, #a855f7) !important;
+            color: white !important;
+        }
+        
+        [data-theme="light"] .nav-item {
+            color: #495057 !important;
+        }
+        
+        [data-theme="light"] .nav-item:hover {
+            background: #f8f9fa !important;
+        }
+        
+        [data-theme="light"] .nav-item.active {
+            background: #e9ecef !important;
+            color: #6366f1 !important;
+        }
+        
+        /* Cards & Containers */
+        [data-theme="light"] .card {
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+        }
+        
+        [data-theme="light"] .card-header {
+            background: #f8f9fa !important;
+            border-bottom: 1px solid #dee2e6 !important;
+        }
+        
+        /* Stats Cards */
+        [data-theme="light"] .stat-card {
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+        }
+        
+        [data-theme="light"] .stat-label {
+            color: #6c757d !important;
+        }
+        
+        [data-theme="light"] .stat-value {
+            color: #1a1a2e !important;
+        }
+        
+        /* Inputs */
         [data-theme="light"] input,
         [data-theme="light"] textarea,
         [data-theme="light"] select {
-            background: #ffffff;
-            border-color: #dee2e6;
-            color: #1a1a2e;
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+            color: #1a1a2e !important;
         }
         
+        [data-theme="light"] input:focus,
+        [data-theme="light"] textarea:focus,
+        [data-theme="light"] select:focus {
+            border-color: #6366f1 !important;
+            background: #ffffff !important;
+        }
+        
+        /* Tables */
+        [data-theme="light"] table {
+            background: #ffffff !important;
+        }
+        
+        [data-theme="light"] th {
+            background: #f8f9fa !important;
+            color: #495057 !important;
+            border-bottom: 2px solid #dee2e6 !important;
+        }
+        
+        [data-theme="light"] td {
+            border-bottom: 1px solid #dee2e6 !important;
+            color: #1a1a2e !important;
+        }
+        
+        [data-theme="light"] tr:hover {
+            background: #f8f9fa !important;
+        }
+        
+        /* Modals */
         [data-theme="light"] .modal {
-            background: #ffffff;
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
         }
         
         [data-theme="light"] .modal-overlay {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.3) !important;
+        }
+        
+        [data-theme="light"] .modal-header {
+            border-bottom: 1px solid #dee2e6 !important;
+        }
+        
+        /* Quick Stats */
+        [data-theme="light"] .quick-stats {
+            background: #f8f9fa !important;
+            border-top: 1px solid #dee2e6 !important;
+        }
+        
+        [data-theme="light"] .quick-stat {
+            border-right: 1px solid #dee2e6 !important;
+        }
+        
+        /* Bottom Nav */
+        [data-theme="light"] .bottom-nav {
+            background: #ffffff !important;
+            border-top: 1px solid #dee2e6 !important;
+        }
+        
+        [data-theme="light"] .bottom-nav-item {
+            color: #6c757d !important;
+        }
+        
+        [data-theme="light"] .bottom-nav-item.active {
+            color: #6366f1 !important;
+        }
+        
+        /* Progress Bars */
+        [data-theme="light"] .progress-bar {
+            background: #e9ecef !important;
+        }
+        
+        /* Day Cards (Itinerary) */
+        [data-theme="light"] .card[style*="backdrop-filter"] {
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+        }
+        
+        /* Activity Cards */
+        [data-theme="light"] div[style*="backdrop-filter: blur"] {
+            background: rgba(255, 255, 255, 0.95) !important;
+            border: 1px solid #dee2e6 !important;
+        }
+        
+        /* Buttons - keep original colors but ensure visibility */
+        [data-theme="light"] .btn-primary {
+            background: #6366f1 !important;
+            color: white !important;
+        }
+        
+        [data-theme="light"] .btn-secondary {
+            background: #6c757d !important;
+            color: white !important;
+        }
+        
+        [data-theme="light"] .btn-success {
+            background: #10b981 !important;
+            color: white !important;
+        }
+        
+        [data-theme="light"] .btn-danger {
+            background: #ef4444 !important;
+            color: white !important;
+        }
+        
+        /* Notifications */
+        [data-theme="light"] .notification-item {
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+        }
+        
+        /* Mobile overlay */
+        [data-theme="light"] .mobile-overlay {
+            background: rgba(0, 0, 0, 0.5) !important;
+        }
+        
+        /* Calendar/Date inputs */
+        [data-theme="light"] input[type="date"],
+        [data-theme="light"] input[type="time"] {
+            background: #ffffff !important;
+            color: #1a1a2e !important;
+        }
+        
+        /* Scrollbar */
+        [data-theme="light"] ::-webkit-scrollbar-track {
+            background: #f8f9fa !important;
+        }
+        
+        [data-theme="light"] ::-webkit-scrollbar-thumb {
+            background: #dee2e6 !important;
+        }
+        
+        [data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+            background: #adb5bd !important;
         }
     </style>
 </head>

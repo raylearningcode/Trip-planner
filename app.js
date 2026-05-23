@@ -1571,13 +1571,37 @@
                 returnDate: tripData.overview.returnDate,
                 destElExists: !!destEl,
                 depElExists: !!depEl,
-                retElExists: !!retEl
+                retElExists: !!retEl,
+                destEl: destEl,
+                depEl: depEl,
+                retEl: retEl
             });
             
-            // Values are already set in tripData.overview with defaults
-            if (destEl) destEl.value = tripData.overview.destination;
-            if (depEl) depEl.value = tripData.overview.departureDate;
-            if (retEl) retEl.value = tripData.overview.returnDate;
+            // If elements don't exist yet, wait for next frame
+            if (!destEl || !depEl || !retEl) {
+                console.warn('⚠️ DOM elements not ready, waiting...');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Try again
+                const destEl2 = document.getElementById('destination');
+                const depEl2 = document.getElementById('departureDate');
+                const retEl2 = document.getElementById('returnDate');
+                
+                console.log('📝 Retry - DOM elements:', {
+                    destElExists: !!destEl2,
+                    depElExists: !!depEl2,
+                    retElExists: !!retEl2
+                });
+                
+                if (destEl2) destEl2.value = tripData.overview.destination;
+                if (depEl2) depEl2.value = tripData.overview.departureDate;
+                if (retEl2) retEl2.value = tripData.overview.returnDate;
+            } else {
+                // Values are already set in tripData.overview with defaults
+                if (destEl) destEl.value = tripData.overview.destination;
+                if (depEl) depEl.value = tripData.overview.departureDate;
+                if (retEl) retEl.value = tripData.overview.returnDate;
+            }
             
             // Update sidebar date display immediately (visible on all pages)
             if (tripData.overview.departureDate && tripData.overview.returnDate) {

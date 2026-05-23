@@ -2658,6 +2658,7 @@
 
         function renderBudgetTable() {
             const tbody = document.getElementById('budgetTableBody');
+            if (!tbody) return; // Safety check
             tbody.innerHTML = '';
 
             tripData.budget.forEach((item, idx) => {
@@ -2836,6 +2837,7 @@
 
         function renderSavingsTable() {
             const tbody = document.getElementById('savingsTableBody');
+            if (!tbody) return; // Safety check
             tbody.innerHTML = '';
 
             let cumulative = 0;
@@ -3368,6 +3370,12 @@
             
             const grid = document.getElementById('documentsGrid');
             const noDocsEl = document.getElementById('noDocuments');
+            
+            // Safety check - element might not exist in DOM
+            if (!grid || !noDocsEl) {
+                console.warn('Documents elements not found in DOM');
+                return;
+            }
             
             const filtered = currentDocFilter === 'all' 
                 ? tripData.documents 
@@ -4069,6 +4077,7 @@
         
         function renderEmergencyContacts() {
             const container = document.getElementById('emergencyContactsList');
+            if (!container) return; // Safety check
             if (!tripData.emergencyContacts || tripData.emergencyContacts.length === 0) {
                 container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No emergency contacts yet</p>';
                 return;
@@ -4166,6 +4175,7 @@
         
         function renderImportantInfo() {
             const container = document.getElementById('importantInfoList');
+            if (!container) return; // Safety check
             if (!tripData.importantInfo || tripData.importantInfo.length === 0) {
                 container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No important information yet</p>';
                 return;
@@ -4227,6 +4237,7 @@
 
         function renderLogisticsTable() {
             const tbody = document.getElementById('logisticsTableBody');
+            if (!tbody) return; // Safety check
             tbody.innerHTML = '';
 
             tripData.logistics.forEach((item, idx) => {
@@ -4275,6 +4286,7 @@
 
         function renderPackingList() {
             const container = document.getElementById('packingContainer');
+            if (!container) return; // Safety check
             container.innerHTML = '';
 
             tripData.packing.forEach((cat, catIdx) => {
@@ -5101,6 +5113,7 @@
 
         async function renderPendingInvitations() {
             const container = document.getElementById('pendingInvitationsList');
+            if (!container) return; // Safety check
             
             // Query database for invitations sent by current user
             const { data: invites } = await sb

@@ -1382,7 +1382,7 @@
             // Load trip details (shared) from trips table
             const { data: trip } = await sb
                 .from('trips')
-                .select('destination, departure_date, return_date')
+                .select('destination, departure_date, return_date, emergency_contacts, important_info')
                 .eq('id', currentTrip)
                 .maybeSingle();
             
@@ -1392,6 +1392,8 @@
                     departureDate: trip.departure_date || '',
                     returnDate: trip.return_date || ''
                 };
+                tripData.emergencyContacts = trip.emergency_contacts || [];
+                tripData.importantInfo = trip.important_info || [];
             } else {
                 // Initialize with empty values if no trip found
                 tripData.overview = {
@@ -1434,8 +1436,6 @@
                     if (row.data_type === 'todos') tripData.todos = row.data;
                     if (row.data_type === 'shared_checklist') tripData.sharedChecklist = row.data;
                     if (row.data_type === 'documents') tripData.documents = row.data;
-                    if (row.data_type === 'emergency_contacts') tripData.emergencyContacts = row.data;
-                    if (row.data_type === 'important_info') tripData.importantInfo = row.data;
                 }
             }
             
@@ -1515,13 +1515,14 @@
             if (!tripData.sharedExpenses) tripData.sharedExpenses = [];
             if (!tripData.packing) tripData.packing = [];
             if (!tripData.bookings) tripData.bookings = [];
-            if (!tripData.documents) tripData.documents = []; // ADD THIS
+            if (!tripData.documents) tripData.documents = [];
             if (!tripData.todos) tripData.todos = [];
             if (!tripData.sharedChecklist) tripData.sharedChecklist = [];
             if (!tripData.myChecklistProgress) tripData.myChecklistProgress = {};
-            if (!tripData.todos) tripData.todos = [];
             if (!tripData.destinations) tripData.destinations = { main: [], optional: [], other: [], restaurants: [] };
             if (!tripData.dayPlans) tripData.dayPlans = [];
+            if (!tripData.emergencyContacts) tripData.emergencyContacts = [];
+            if (!tripData.importantInfo) tripData.importantInfo = [];
             
             // Add owner to group if not present
             if (tripData.group.length === 0 && user) {
@@ -1740,39 +1741,16 @@
                     })
                 );
                 
-                // Save emergency contacts
-                savePromises.push(
-                    sb.from('shared_trip_data').upsert({
-                        trip_id: currentTrip,
-                        data_type: 'emergency_contacts',
-                        data: tripData.emergencyContacts || [],
-                        last_edited_by: user.id
-                    }, { onConflict: 'trip_id,data_type' })
-                    .then(result => {
-                        if (result.error) throw new Error(`emergency_contacts save failed: ${result.error.message}`);
-                        return result;
-                    })
-                );
-                
-                // Save important info
-                savePromises.push(
-                    sb.from('shared_trip_data').upsert({
-                        trip_id: currentTrip,
-                        data_type: 'important_info',
-                        data: tripData.importantInfo || [],
-                        last_edited_by: user.id
-                    }, { onConflict: 'trip_id,data_type' })
-                    .then(result => {
-                        if (result.error) throw new Error(`important_info save failed: ${result.error.message}`);
-                        return result;
-                    })
-                );
+                // Emergency contacts and important info are stored in trip overview
+                // Not as separate shared_trip_data entries
                 
                 savePromises.push(
                     sb.from('trips').update({
                         destination: tripData.overview.destination,
                         departure_date: tripData.overview.departureDate,
-                        return_date: tripData.overview.returnDate
+                        return_date: tripData.overview.returnDate,
+                        emergency_contacts: tripData.emergencyContacts || [],
+                        important_info: tripData.importantInfo || []
                     }).eq('id', currentTrip)
                 );
                 

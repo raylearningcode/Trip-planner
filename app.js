@@ -1388,16 +1388,16 @@
             
             if (trip) {
                 tripData.overview = {
-                    destination: trip.destination || '',
-                    departureDate: trip.departure_date || '',
-                    returnDate: trip.return_date || ''
+                    destination: trip.destination || 'Germany (Multi-City)',
+                    departureDate: trip.departure_date || '2027-06-01',
+                    returnDate: trip.return_date || '2027-06-14'
                 };
             } else {
-                // Initialize with empty values if no trip found
+                // Initialize with default values if no trip found
                 tripData.overview = {
-                    destination: '',
-                    departureDate: '',
-                    returnDate: ''
+                    destination: 'Germany (Multi-City)',
+                    departureDate: '2027-06-01',
+                    returnDate: '2027-06-14'
                 };
             }
             
@@ -1550,11 +1550,7 @@
             const depEl = document.getElementById('departureDate');
             const retEl = document.getElementById('returnDate');
             
-            // Set defaults if data is empty
-            if (!tripData.overview.destination) tripData.overview.destination = 'Germany (Multi-City)';
-            if (!tripData.overview.departureDate) tripData.overview.departureDate = '2027-06-01';
-            if (!tripData.overview.returnDate) tripData.overview.returnDate = '2027-06-14';
-            
+            // Values are already set in tripData.overview with defaults
             if (destEl) destEl.value = tripData.overview.destination;
             if (depEl) depEl.value = tripData.overview.departureDate;
             if (retEl) retEl.value = tripData.overview.returnDate;

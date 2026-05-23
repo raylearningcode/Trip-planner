@@ -7604,6 +7604,19 @@
         // Initialize
         window.addEventListener('load', async () => {
             console.log('🎬 Window loaded, starting initialization...');
+            console.log('📄 Current page:', window.location.pathname);
+            console.log('📄 Document title:', document.title);
+            
+            // Check if we're on the right page
+            const bodyCheck = document.querySelector('body');
+            console.log('📄 Body classes:', bodyCheck?.className);
+            console.log('📄 All script tags:', Array.from(document.querySelectorAll('script')).map(s => s.src || 'inline'));
+            
+            // Count total elements
+            console.log('📄 Total DOM elements:', document.querySelectorAll('*').length);
+            console.log('📄 Does #destination exist?', !!document.getElementById('destination'));
+            console.log('📄 Does #overview exist?', !!document.getElementById('overview'));
+            console.log('📄 All elements with IDs:', Array.from(document.querySelectorAll('[id]')).map(el => el.id).slice(0, 20));
             
             // Auto-clear cache every 24 hours (preserves important data)
             const urlParams = new URLSearchParams(window.location.search);

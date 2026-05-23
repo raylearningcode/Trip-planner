@@ -1564,12 +1564,14 @@
             console.log('🔍 About to query DOM elements...');
             console.log('🔍 document.getElementById available?', typeof document.getElementById);
             console.log('🔍 Testing getElementById("overview"):', document.getElementById('overview'));
+            console.log('🔍 Testing querySelector("#destination"):', document.querySelector('#destination'));
             
-            const destEl = document.getElementById('destination');
-            const depEl = document.getElementById('departureDate');
-            const retEl = document.getElementById('returnDate');
+            // Try both methods
+            const destEl = document.querySelector('#destination');
+            const depEl = document.querySelector('#departureDate');
+            const retEl = document.querySelector('#returnDate');
             
-            console.log('📝 Setting DOM fields:', {
+            console.log('📝 Setting DOM fields (using querySelector):', {
                 destination: tripData.overview.destination,
                 departureDate: tripData.overview.departureDate,
                 returnDate: tripData.overview.returnDate,
@@ -1586,12 +1588,12 @@
                 console.warn('⚠️ DOM elements not ready, waiting...');
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
-                // Try again
-                const destEl2 = document.getElementById('destination');
-                const depEl2 = document.getElementById('departureDate');
-                const retEl2 = document.getElementById('returnDate');
+                // Try again with querySelector
+                const destEl2 = document.querySelector('#destination');
+                const depEl2 = document.querySelector('#departureDate');
+                const retEl2 = document.querySelector('#returnDate');
                 
-                console.log('📝 Retry - DOM elements:', {
+                console.log('📝 Retry - DOM elements (querySelector):', {
                     destElExists: !!destEl2,
                     depElExists: !!depEl2,
                     retElExists: !!retEl2

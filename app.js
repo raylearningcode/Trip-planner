@@ -7531,8 +7531,6 @@
                 }
             }
             
-            // Show loading skeletons
-            showLoadingSkeletons();
             
             try {
                 // Check for share link (guest mode)

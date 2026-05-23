@@ -1368,37 +1368,25 @@
 
         // Load/Save Data
         async function loadData() {
-            try {
-                console.log('🚀 loadData() START - currentTrip:', currentTrip, 'user:', user?.id);
-                
-                // Try offline data first if offline
-                if (!navigator.onLine) {
-                    console.log('📴 Offline - loading from local storage');
-                    const offlineData = loadFromLocalStorage();
-                    if (offlineData) {
-                        Object.assign(tripData, offlineData);
-                        renderAll();
-                        return;
-                    }
+            // Try offline data first if offline
+            if (!navigator.onLine) {
+                console.log('📴 Offline - loading from local storage');
+                const offlineData = loadFromLocalStorage();
+                if (offlineData) {
+                    Object.assign(tripData, offlineData);
+                    renderAll();
+                    return;
                 }
-                
-                console.log('🔍 Querying trips table for trip:', currentTrip);
-                
-                // Load trip details (shared) from trips table
-                const { data: trip, error: tripError } = await sb
-                    .from('trips')
-                    .select('destination, departure_date, return_date')
-                    .eq('id', currentTrip)
-                    .maybeSingle();
-                
-                if (tripError) {
-                    console.error('❌ Error loading trip:', tripError);
-                    throw tripError;
-                }
-                
-                console.log('🔍 Query result:', trip);
-                
-                if (trip) {
+            }
+            
+            // Load trip details (shared) from trips table
+            const { data: trip } = await sb
+                .from('trips')
+                .select('destination, departure_date, return_date')
+                .eq('id', currentTrip)
+                .maybeSingle();
+            
+            if (trip) {
                 console.log('📊 Loaded trip from DB:', trip);
                 tripData.overview = {
                     destination: trip.destination || 'Germany (Multi-City)',
@@ -1561,66 +1549,23 @@
                 });
             }
 
-            console.log('🔍 About to query DOM elements...');
-            console.log('🔍 document.getElementById available?', typeof document.getElementById);
-            console.log('🔍 Testing getElementById("overview"):', document.getElementById('overview'));
-            console.log('🔍 Testing querySelector("#destination"):', document.querySelector('#destination'));
+            const destEl = document.getElementById('destination');
+            const depEl = document.getElementById('departureDate');
+            const retEl = document.getElementById('returnDate');
             
-            // Try both methods
-            const destEl = document.querySelector('#destination');
-            const depEl = document.querySelector('#departureDate');
-            const retEl = document.querySelector('#returnDate');
-            
-            console.log('📝 Setting DOM fields (using querySelector):', {
+            console.log('📝 Setting DOM fields:', {
                 destination: tripData.overview.destination,
                 departureDate: tripData.overview.departureDate,
                 returnDate: tripData.overview.returnDate,
                 destElExists: !!destEl,
                 depElExists: !!depEl,
-                retElExists: !!retEl,
-                destEl: destEl,
-                depEl: depEl,
-                retEl: retEl
+                retElExists: !!retEl
             });
             
-            // If elements don't exist yet, wait for next frame
-            if (!destEl || !depEl || !retEl) {
-                console.warn('⚠️ DOM elements not ready, waiting...');
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                // Try again with querySelector
-                const destEl2 = document.querySelector('#destination');
-                const depEl2 = document.querySelector('#departureDate');
-                const retEl2 = document.querySelector('#returnDate');
-                
-                console.log('📝 Retry - DOM elements (querySelector):', {
-                    destElExists: !!destEl2,
-                    depElExists: !!depEl2,
-                    retElExists: !!retEl2
-                });
-                
-                if (destEl2) destEl2.value = tripData.overview.destination;
-                if (depEl2) depEl2.value = tripData.overview.departureDate;
-                if (retEl2) retEl2.value = tripData.overview.returnDate;
-            } else {
-                // Values are already set in tripData.overview with defaults
-                if (destEl) destEl.value = tripData.overview.destination;
-                if (depEl) depEl.value = tripData.overview.departureDate;
-                if (retEl) retEl.value = tripData.overview.returnDate;
-            }
-            
-            // Update sidebar date display immediately (visible on all pages)
-            if (tripData.overview.departureDate && tripData.overview.returnDate) {
-                const dep = new Date(tripData.overview.departureDate);
-                const ret = new Date(tripData.overview.returnDate);
-                const depStr = dep.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                const retStr = ret.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                const tripDateEl = document.getElementById('tripDateRange');
-                if (tripDateEl) {
-                    tripDateEl.textContent = depStr + ' - ' + retStr;
-                    console.log('📅 Updated sidebar dates:', depStr + ' - ' + retStr);
-                }
-            }
+            // Values are already set in tripData.overview with defaults
+            if (destEl) destEl.value = tripData.overview.destination;
+            if (depEl) depEl.value = tripData.overview.departureDate;
+            if (retEl) retEl.value = tripData.overview.returnDate;
 
             renderAll();
             updateAllStats();
@@ -1630,14 +1575,6 @@
             const savedPage = localStorage.getItem('currentPage');
             if (savedPage && document.getElementById(savedPage)) {
                 showPage(savedPage);
-            }
-            
-            console.log('✅ loadData() COMPLETE');
-            
-            } catch (loadError) {
-                console.error('❌ CRITICAL ERROR in loadData():', loadError);
-                console.error('Stack:', loadError.stack);
-                alert('Failed to load trip data: ' + loadError.message);
             }
         }
 
@@ -1657,9 +1594,6 @@
         }, 500); // 500ms debounce for typing
         
         async function saveData() {
-            // Track call stack
-            console.log('💾 saveData() called from:', new Error().stack.split('\n')[2].trim());
-            
             // Skip save in guest mode
             if (!user || !currentTrip) {
                 console.log('⏭️ Skipping save (guest mode or no user)');
@@ -1685,12 +1619,6 @@
             const destEl = document.getElementById('destination');
             const depEl = document.getElementById('departureDate');
             const retEl = document.getElementById('returnDate');
-            
-            console.log('📝 DOM values before save:', {
-                dest: destEl?.value,
-                dep: depEl?.value,
-                ret: retEl?.value
-            });
             
             // Only update overview if DOM elements exist AND have values
             // Don't overwrite with empty strings!
@@ -7607,24 +7535,14 @@
             }
         }
 
+        // Event Listeners
+        document.getElementById('destination').addEventListener('change', saveDataSync);
+        document.getElementById('departureDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
+        document.getElementById('returnDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
+
         // Initialize
         window.addEventListener('load', async () => {
-            const APP_VERSION = 'v2024-05-24-DEBUG-FULL';
             console.log('🎬 Window loaded, starting initialization...');
-            console.log('📦 APP.JS VERSION:', APP_VERSION);
-            console.log('📄 Current page:', window.location.pathname);
-            console.log('📄 Document title:', document.title);
-            
-            // Check if we're on the right page
-            const bodyCheck = document.querySelector('body');
-            console.log('📄 Body classes:', bodyCheck?.className);
-            console.log('📄 All script tags:', Array.from(document.querySelectorAll('script')).map(s => s.src || 'inline'));
-            
-            // Count total elements
-            console.log('📄 Total DOM elements:', document.querySelectorAll('*').length);
-            console.log('📄 Does #destination exist?', !!document.getElementById('destination'));
-            console.log('📄 Does #overview exist?', !!document.getElementById('overview'));
-            console.log('📄 All elements with IDs:', Array.from(document.querySelectorAll('[id]')).map(el => el.id).slice(0, 20));
             
             // Auto-clear cache every 24 hours (preserves important data)
             const urlParams = new URLSearchParams(window.location.search);
@@ -7871,12 +7789,6 @@
             loadExchangeRate();
             await loadData();
             updateRateDisplay();
-            
-            // Attach event listeners AFTER data is loaded to avoid triggering saveData with empty fields
-            console.log('📌 Attaching event listeners to overview fields...');
-            document.getElementById('destination').addEventListener('change', saveDataSync);
-            document.getElementById('departureDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
-            document.getElementById('returnDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
             
             // Load notifications
             loadNotifications();

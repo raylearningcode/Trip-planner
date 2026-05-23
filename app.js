@@ -1588,10 +1588,14 @@
             
             isLocalUpdate = true;
             
+            const destEl = document.getElementById('destination');
+            const depEl = document.getElementById('departureDate');
+            const retEl = document.getElementById('returnDate');
+            
             tripData.overview = {
-                destination: document.getElementById('destination').value,
-                departureDate: document.getElementById('departureDate').value,
-                returnDate: document.getElementById('returnDate').value
+                destination: destEl ? destEl.value : tripData.overview.destination || '',
+                departureDate: depEl ? depEl.value : tripData.overview.departureDate || '',
+                returnDate: retEl ? retEl.value : tripData.overview.returnDate || ''
             };
             
             try {
@@ -3372,11 +3376,8 @@
             const grid = document.getElementById('documentsGrid');
             const noDocsEl = document.getElementById('noDocuments');
             
-            // Safety check - element might not exist in DOM
-            if (!grid || !noDocsEl) {
-                console.warn('Documents elements not found in DOM');
-                return;
-            }
+            // Safety check - element might not exist in DOM yet
+            if (!grid || !noDocsEl) return;
             
             const filtered = currentDocFilter === 'all' 
                 ? tripData.documents 
@@ -3615,11 +3616,8 @@
             const weatherWidget = document.getElementById('weatherWidget');
             const weatherContent = document.getElementById('weatherContent');
             
-            // Safety checks
-            if (!destEl || !weatherWidget || !weatherContent) {
-                console.warn('Weather elements not found in DOM');
-                return;
-            }
+            // Safety checks - elements might not exist yet
+            if (!destEl || !weatherWidget || !weatherContent) return;
             
             const destination = destEl.value;
             if (!destination || destination.trim() === '') {
@@ -6092,9 +6090,14 @@
             // Update stats
             const totalDays = tripData.dayPlans.length;
             const totalActivities = tripData.dayPlans.reduce((sum, day) => sum + (day.activities?.length || 0), 0);
-            document.getElementById('totalDaysCount').textContent = totalDays;
-            document.getElementById('totalActivitiesCount').textContent = totalActivities;
-            document.getElementById('conflictsCount').textContent = conflicts.length;
+            
+            const totalDaysEl = document.getElementById('totalDaysCount');
+            const totalActivitiesEl = document.getElementById('totalActivitiesCount');
+            const conflictsEl = document.getElementById('conflictsCount');
+            
+            if (totalDaysEl) totalDaysEl.textContent = totalDays;
+            if (totalActivitiesEl) totalActivitiesEl.textContent = totalActivities;
+            if (conflictsEl) conflictsEl.textContent = conflicts.length;
             document.getElementById('conflictsCount').style.color = conflicts.length > 0 ? 'var(--danger)' : 'var(--success)';
 
             tripData.dayPlans.forEach((plan, idx) => {

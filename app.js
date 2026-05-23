@@ -7590,7 +7590,7 @@
                     
                     if (!shareDataStr) {
                         alert('Share link expired or invalid');
-                        window.location.href = 'index.html';
+                        window.location.href = 'login.html';
                         return;
                     }
                     
@@ -7709,8 +7709,19 @@
                 }
                 
                 if (!session) {
-                    console.log('❌ No session - redirecting to login');
-                    window.location.href = 'index.html';
+                    console.log('❌ No session - user needs to login');
+                    // Don't redirect - there's no separate login page
+                    // Instead show error message
+                    document.body.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #0a0a1e; color: white; font-family: system-ui; text-align: center; padding: 20px;">
+                            <div>
+                                <h1 style="font-size: 48px; margin-bottom: 16px;">🔒</h1>
+                                <h2 style="margin-bottom: 8px;">Session Expired</h2>
+                                <p style="color: #94a3b8; margin-bottom: 24px;">Please log in to Supabase to continue</p>
+                                <a href="https://supabase.com/dashboard" style="display: inline-block; padding: 12px 24px; background: #6366f1; color: white; text-decoration: none; border-radius: 8px; font-weight: 500;">Go to Supabase Dashboard</a>
+                            </div>
+                        </div>
+                    `;
                     return;
                 }
                 
@@ -8258,7 +8269,7 @@
         // Logout
         async function logout() {
             await sb.auth.signOut();
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
         }
 
         // Auto-save disabled - causing 400 error loop

@@ -1099,51 +1099,7 @@
         window.showGlobalSearch = showGlobalSearch;
         window.performGlobalSearch = performGlobalSearch;
         
-        // ========================================
-        // LOADING SKELETONS
-        // ========================================
-        
-        function showLoadingSkeletons() {
-            const pages = ['overview', 'itinerary', 'destinations', 'bookings'];
-            pages.forEach(pageId => {
-                const page = document.getElementById(pageId);
-                if (!page) return;
-                
-                const skeletonHTML = `
-                    <div class="skeleton-container" style="padding: 20px;">
-                        <div class="skeleton skeleton-title"></div>
-                        <div class="skeleton skeleton-card"></div>
-                        <div class="skeleton skeleton-card"></div>
-                        <div class="skeleton skeleton-text" style="width: 80%;"></div>
-                        <div class="skeleton skeleton-text" style="width: 60%;"></div>
-                    </div>
-                `;
-                
-                const existingContent = page.innerHTML;
-                page.setAttribute('data-original-content', existingContent);
-                page.innerHTML = skeletonHTML;
-            });
-        }
-        
-        function hideLoadingSkeletons() {
-            const pages = ['overview', 'itinerary', 'destinations', 'bookings'];
-            pages.forEach(pageId => {
-                const page = document.getElementById(pageId);
-                if (!page) return;
-                
-                const originalContent = page.getAttribute('data-original-content');
-                if (originalContent) {
-                    page.innerHTML = originalContent;
-                    page.removeAttribute('data-original-content');
-                }
-            });
-        }
-        
-        window.hideLoadingSkeletons = hideLoadingSkeletons;
-        
-        // ========================================
-        // END LOADING SKELETONS
-        // ========================================
+
         
         // ========================================
         // END KEYBOARD SHORTCUTS & SEARCH

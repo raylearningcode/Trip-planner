@@ -7535,11 +7535,6 @@
             }
         }
 
-        // Event Listeners
-        document.getElementById('destination').addEventListener('change', saveDataSync);
-        document.getElementById('departureDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
-        document.getElementById('returnDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
-
         // Initialize
         window.addEventListener('load', async () => {
             console.log('🎬 Window loaded, starting initialization...');
@@ -7789,6 +7784,12 @@
             loadExchangeRate();
             await loadData();
             updateRateDisplay();
+            
+            // Attach event listeners AFTER data is loaded to avoid triggering saveData with empty fields
+            console.log('📌 Attaching event listeners to overview fields...');
+            document.getElementById('destination').addEventListener('change', saveDataSync);
+            document.getElementById('departureDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
+            document.getElementById('returnDate').addEventListener('change', () => { saveDataSync(); updateAllStats(); });
             
             // Load notifications
             loadNotifications();

@@ -1368,25 +1368,37 @@
 
         // Load/Save Data
         async function loadData() {
-            // Try offline data first if offline
-            if (!navigator.onLine) {
-                console.log('📴 Offline - loading from local storage');
-                const offlineData = loadFromLocalStorage();
-                if (offlineData) {
-                    Object.assign(tripData, offlineData);
-                    renderAll();
-                    return;
+            try {
+                console.log('🚀 loadData() START - currentTrip:', currentTrip, 'user:', user?.id);
+                
+                // Try offline data first if offline
+                if (!navigator.onLine) {
+                    console.log('📴 Offline - loading from local storage');
+                    const offlineData = loadFromLocalStorage();
+                    if (offlineData) {
+                        Object.assign(tripData, offlineData);
+                        renderAll();
+                        return;
+                    }
                 }
-            }
-            
-            // Load trip details (shared) from trips table
-            const { data: trip } = await sb
-                .from('trips')
-                .select('destination, departure_date, return_date')
-                .eq('id', currentTrip)
-                .maybeSingle();
-            
-            if (trip) {
+                
+                console.log('🔍 Querying trips table for trip:', currentTrip);
+                
+                // Load trip details (shared) from trips table
+                const { data: trip, error: tripError } = await sb
+                    .from('trips')
+                    .select('destination, departure_date, return_date')
+                    .eq('id', currentTrip)
+                    .maybeSingle();
+                
+                if (tripError) {
+                    console.error('❌ Error loading trip:', tripError);
+                    throw tripError;
+                }
+                
+                console.log('🔍 Query result:', trip);
+                
+                if (trip) {
                 console.log('📊 Loaded trip from DB:', trip);
                 tripData.overview = {
                     destination: trip.destination || 'Germany (Multi-City)',
@@ -1588,6 +1600,14 @@
             const savedPage = localStorage.getItem('currentPage');
             if (savedPage && document.getElementById(savedPage)) {
                 showPage(savedPage);
+            }
+            
+            console.log('✅ loadData() COMPLETE');
+            
+            } catch (loadError) {
+                console.error('❌ CRITICAL ERROR in loadData():', loadError);
+                console.error('Stack:', loadError.stack);
+                alert('Failed to load trip data: ' + loadError.message);
             }
         }
 

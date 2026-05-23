@@ -832,6 +832,120 @@
         let currentPage = 'overview'; // Track current page/tab
         let realtimeChannels = []; // Store active subscriptions
         let isLocalUpdate = false; // Track our own saves to prevent reload loops
+        
+        // ========================================
+        // OFFLINE MODE SUPPORT
+        // ========================================
+        
+        let isOffline = false;
+        
+        function saveToLocalStorage() {
+            try {
+                const offlineData = {
+                    tripData: tripData,
+                    currentTrip: currentTrip,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem(`offline_trip_${currentTrip}`, JSON.stringify(offlineData));
+                console.log('💾 Saved offline to localStorage');
+            } catch (err) {
+                console.error('Failed to save offline:', err);
+            }
+        }
+        
+        function loadFromLocalStorage() {
+            if (!currentTrip) return null;
+            
+            try {
+                const cached = localStorage.getItem(`offline_trip_${currentTrip}`);
+                if (cached) {
+                    const offlineData = JSON.parse(cached);
+                    console.log(`📂 Loaded offline data from ${new Date(offlineData.timestamp).toLocaleString()}`);
+                    return offlineData.tripData;
+                }
+            } catch (err) {
+                console.error('Failed to load offline data:', err);
+            }
+            return null;
+        }
+        
+        function showOfflineIndicator() {
+            if (isOffline) return;
+            
+            isOffline = true;
+            const indicator = document.createElement('div');
+            indicator.id = 'offlineIndicator';
+            indicator.style.cssText = `
+                position: fixed;
+                top: 16px;
+                right: 16px;
+                background: linear-gradient(135deg, #f59e0b, #d97706);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            `;
+            indicator.innerHTML = `<span style="font-size: 20px;">📴</span><span>Offline - Changes saved locally</span>`;
+            document.body.appendChild(indicator);
+        }
+        
+        function hideOfflineIndicator() {
+            isOffline = false;
+            const indicator = document.getElementById('offlineIndicator');
+            if (indicator) indicator.remove();
+        }
+        
+        async function syncOfflineChanges() {
+            if (!currentTrip || !user) return;
+            
+            const offlineData = loadFromLocalStorage();
+            if (!offlineData) return;
+            
+            console.log('🔄 Syncing offline changes...');
+            
+            Object.assign(tripData, offlineData);
+            
+            try {
+                await saveData();
+                localStorage.removeItem(`offline_trip_${currentTrip}`);
+                console.log('✅ Offline changes synced');
+                
+                const toast = document.createElement('div');
+                toast.style.cssText = `position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 16px 24px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10000;`;
+                toast.innerHTML = `<span style="font-size: 20px; margin-right: 8px;">✅</span>Offline changes synced!`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            } catch (err) {
+                console.error('Failed to sync:', err);
+            }
+        }
+        
+        // Listen for online/offline
+        window.addEventListener('online', () => {
+            console.log('🌐 Back online!');
+            hideOfflineIndicator();
+            syncOfflineChanges();
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('📴 Gone offline');
+            showOfflineIndicator();
+        });
+        
+        // Check on load
+        if (!navigator.onLine) {
+            showOfflineIndicator();
+        }
+        
+        // ========================================
+        // END OFFLINE MODE
+        // ========================================
 
         // Data Structure
         let tripData = {
@@ -1048,6 +1162,17 @@
 
         // Load/Save Data
         async function loadData() {
+            // Try offline data first if offline
+            if (!navigator.onLine) {
+                console.log('📴 Offline - loading from local storage');
+                const offlineData = loadFromLocalStorage();
+                if (offlineData) {
+                    Object.assign(tripData, offlineData);
+                    renderAll();
+                    return;
+                }
+            }
+            
             // Load trip details (shared) from trips table
             const { data: trip } = await sb
                 .from('trips')
@@ -1243,6 +1368,14 @@
             // Skip save in guest mode
             if (!user || !currentTrip) {
                 console.log('⏭️ Skipping save (guest mode or no user)');
+                return;
+            }
+            
+            // Check if offline
+            if (!navigator.onLine) {
+                console.log('📴 Offline - saving locally...');
+                saveToLocalStorage();
+                showOfflineIndicator();
                 return;
             }
             
@@ -3840,28 +3973,195 @@
             });
         }
 
-        function addSmartSuggestions() {
-            const suggestions = [
-                { category: '📄 Documents', items: ['Passport', 'Visa', 'Flight tickets', 'Hotel bookings', 'Insurance', 'ID card'] },
-                { category: '👕 Clothes', items: ['T-shirts', 'Pants', 'Jacket', 'Underwear', 'Socks', 'Shoes'] },
-                { category: '🧴 Toiletries', items: ['Toothbrush', 'Toothpaste', 'Shampoo', 'Soap', 'Deodorant'] },
-                { category: '📱 Tech', items: ['Phone', 'Charger', 'Power bank', 'Adapter', 'Headphones'] }
-            ];
-
-            suggestions.forEach(cat => {
-                const exists = tripData.packing.find(c => c.category === cat.category);
-                if (!exists) {
+        // ========================================
+        // PACKING TEMPLATES SYSTEM
+        // ========================================
+        
+        const packingTemplates = {
+            beach: {
+                name: '🏖️ Beach Vacation',
+                categories: [
+                    { category: '👙 Beachwear', items: ['Swimsuit', 'Bikini/Trunks (2)', 'Beach cover-up', 'Flip-flops', 'Sandals', 'Beach bag', 'Beach towel (2)'] },
+                    { category: '☀️ Sun Protection', items: ['Sunscreen SPF 50', 'After-sun lotion', 'Sunglasses', 'Sun hat/cap', 'Lip balm SPF'] },
+                    { category: '👕 Clothing', items: ['Light t-shirts (3)', 'Shorts (2)', 'Sundress (2)', 'Light pants (1)', 'Evening outfit', 'Underwear (5)'] },
+                    { category: '🏊 Water Activities', items: ['Snorkel gear', 'Waterproof phone case', 'GoPro/camera', 'Dry bag'] },
+                    { category: '📄 Documents', items: ['Passport', 'Travel insurance', 'Hotel booking', 'Flight tickets'] }
+                ]
+            },
+            city: {
+                name: '🏙️ City Tour',
+                categories: [
+                    { category: '👟 Footwear', items: ['Comfortable walking shoes', 'Sneakers', 'Casual shoes', 'Socks (5)'] },
+                    { category: '👕 Clothing', items: ['T-shirts (3)', 'Jeans/pants (2)', 'Light jacket', 'Sweater', 'Underwear (5)', 'Dress/smart outfit'] },
+                    { category: '🎒 Day Pack', items: ['Backpack', 'Water bottle', 'Portable charger', 'City map', 'Guidebook'] },
+                    { category: '📱 Tech', items: ['Phone + charger', 'Camera', 'Power adapter', 'Headphones', 'E-reader'] },
+                    { category: '📄 Documents', items: ['Passport', 'Metro/bus pass', 'Hotel confirmations', 'Museum tickets'] }
+                ]
+            },
+            winter: {
+                name: '⛷️ Winter/Ski Trip',
+                categories: [
+                    { category: '🧥 Winter Wear', items: ['Heavy jacket', 'Ski jacket', 'Thermal underwear (2)', 'Fleece/sweater (2)', 'Warm pants (2)', 'Gloves (2)', 'Beanie/hat', 'Scarf', 'Thick socks (5)'] },
+                    { category: '⛷️ Ski Gear', items: ['Ski pants', 'Goggles', 'Helmet', 'Hand warmers', 'Lip balm', 'Sunscreen'] },
+                    { category: '👞 Footwear', items: ['Winter boots', 'Indoor shoes', 'Slippers'] },
+                    { category: '📄 Documents', items: ['Passport', 'Ski pass', 'Travel insurance', 'Hotel booking'] }
+                ]
+            },
+            backpacking: {
+                name: '🎒 Backpacking',
+                categories: [
+                    { category: '🎒 Backpack Essentials', items: ['Main backpack 40-50L', 'Daypack 20L', 'Packing cubes', 'Dry bags', 'Locks'] },
+                    { category: '👕 Clothing (Minimal)', items: ['Quick-dry t-shirts (3)', 'Convertible pants (2)', 'Shorts', 'Fleece jacket', 'Rain jacket', 'Underwear (4)', 'Socks (4)'] },
+                    { category: '😴 Sleep', items: ['Sleeping bag liner', 'Travel towel', 'Eye mask', 'Earplugs'] },
+                    { category: '🔦 Utilities', items: ['Headlamp', 'Multi-tool', 'Water bottle', 'Water purifier', 'First aid kit', 'Duct tape'] },
+                    { category: '📄 Documents', items: ['Passport', 'Visa copies', 'Insurance', 'Hostel bookings', 'Emergency contacts'] }
+                ]
+            },
+            business: {
+                name: '💼 Business Trip',
+                categories: [
+                    { category: '👔 Business Attire', items: ['Suit (2)', 'Dress shirts (3)', 'Ties (2)', 'Belt', 'Dress shoes', 'Dress socks (3)', 'Underwear (3)'] },
+                    { category: '💼 Work Essentials', items: ['Laptop + charger', 'Business cards', 'Notebook', 'Pens', 'Presentation materials', 'Tablet'] },
+                    { category: '👕 Casual', items: ['Polo shirts (2)', 'Casual pants', 'Sneakers', 'Gym clothes'] },
+                    { category: '📄 Documents', items: ['Passport', 'Boarding pass', 'Hotel booking', 'Meeting schedules', 'Client contacts'] }
+                ]
+            },
+            safari: {
+                name: '🦁 Safari/Wildlife',
+                categories: [
+                    { category: '👕 Safari Clothing', items: ['Khaki/neutral shirts (3)', 'Long pants (2)', 'Long-sleeve shirts (2)', 'Safari hat', 'Bandana', 'Comfortable boots', 'Sandals'] },
+                    { category: '📸 Photography', items: ['Camera + lenses', 'Extra batteries', 'Memory cards', 'Binoculars', 'Tripod'] },
+                    { category: '🦟 Protection', items: ['Insect repellent', 'Sunscreen SPF 50', 'After-bite cream', 'Mosquito net', 'Long socks'] },
+                    { category: '🎒 Safari Gear', items: ['Daypack', 'Water bottle', 'Flashlight', 'Portable charger', 'Wet wipes'] },
+                    { category: '📄 Documents', items: ['Passport', 'Visa', 'Vaccination certificate', 'Safari booking', 'Travel insurance'] }
+                ]
+            },
+            cruise: {
+                name: '🚢 Cruise',
+                categories: [
+                    { category: '👗 Formal Wear', items: ['Evening dress/suit', 'Formal shoes', 'Accessories', 'Dress shirts (2)'] },
+                    { category: '👕 Casual', items: ['T-shirts (4)', 'Shorts (3)', 'Sundresses (2)', 'Light pants (2)', 'Swimwear (2)', 'Cover-up', 'Underwear (7)'] },
+                    { category: '👞 Footwear', items: ['Dress shoes', 'Sandals', 'Sneakers', 'Flip-flops'] },
+                    { category: '🏊 Cruise Essentials', items: ['Beach bag', 'Sunscreen', 'Sunglasses', 'Hat', 'Motion sickness pills', 'Reusable water bottle'] },
+                    { category: '📄 Documents', items: ['Passport', 'Cruise ticket', 'Excursion bookings', 'Travel insurance', 'Emergency contacts'] }
+                ]
+            }
+        };
+        
+        function showPackingTemplates() {
+            const templateButtons = Object.keys(packingTemplates).map(key => {
+                const template = packingTemplates[key];
+                return `
+                    <button onclick="applyPackingTemplate('${key}')" style="
+                        width: 100%;
+                        padding: 16px;
+                        margin-bottom: 12px;
+                        background: var(--bg-hover);
+                        border: 1px solid var(--border);
+                        border-radius: 12px;
+                        cursor: pointer;
+                        text-align: left;
+                        transition: all 0.2s;
+                        font-size: 15px;
+                        color: var(--text-primary);
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    " onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateX(4px)'" 
+                       onmouseout="this.style.borderColor='var(--border)'; this.style.transform='translateX(0)'">
+                        <span style="font-size: 24px;">${template.name.split(' ')[0]}</span>
+                        <div>
+                            <div style="font-weight: 600;">${template.name}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                                ${template.categories.length} categories • ${template.categories.reduce((sum, cat) => sum + cat.items.length, 0)} items
+                            </div>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+            
+            showModal(`
+                <div class="modal-header">
+                    <div class="modal-title">📋 Packing Templates</div>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        Choose a template based on your trip type. Items will be added to your packing list.
+                    </p>
+                    ${templateButtons}
+                </div>
+            `);
+        }
+        
+        function applyPackingTemplate(templateKey) {
+            const template = packingTemplates[templateKey];
+            if (!template) return;
+            
+            // Get trip duration for smart quantity
+            const days = calculateTripDuration();
+            
+            template.categories.forEach(cat => {
+                // Check if category already exists
+                const existingCat = tripData.packing.find(c => c.category === cat.category);
+                
+                if (!existingCat) {
+                    // Add new category with smart quantities
                     tripData.packing.push({
                         category: cat.category,
-                        items: cat.items.map(name => ({ name, amount: 1, packed: false })),
+                        items: cat.items.map(itemName => {
+                            // Smart quantity based on item type and trip duration
+                            let amount = 1;
+                            const lowerName = itemName.toLowerCase();
+                            
+                            if (lowerName.includes('underwear') || lowerName.includes('socks')) {
+                                amount = Math.min(days, 7); // Max 7
+                            } else if (lowerName.includes('t-shirt') || lowerName.includes('shirt')) {
+                                amount = Math.ceil(days / 2); // Half the days
+                            } else if (lowerName.match(/\((\d+)\)/)) {
+                                // Extract number from parentheses like "Shorts (2)"
+                                amount = parseInt(lowerName.match(/\((\d+)\)/)[1]);
+                            }
+                            
+                            return { 
+                                name: itemName.replace(/\s*\(\d+\)/, ''), // Remove (2) from name
+                                amount: amount, 
+                                packed: false 
+                            };
+                        }),
                         expanded: true
                     });
                 }
             });
-
+            
             renderPackingList();
             saveData();
+            closeModal();
+            
+            // Success toast
+            const toast = document.createElement('div');
+            toast.style.cssText = `position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 16px 24px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10000;`;
+            toast.innerHTML = `<span style="font-size: 20px; margin-right: 8px;">✅</span>Template "${template.name}" loaded!`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
+        
+        function calculateTripDuration() {
+            if (!tripData.overview.departureDate || !tripData.overview.returnDate) return 7; // Default
+            
+            const start = new Date(tripData.overview.departureDate);
+            const end = new Date(tripData.overview.returnDate);
+            const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            
+            return days > 0 ? days : 7;
+        }
+        
+        window.showPackingTemplates = showPackingTemplates;
+        window.applyPackingTemplate = applyPackingTemplate;
+        
+        // ========================================
+        // END PACKING TEMPLATES
+        // ========================================
 
         // Group Functions
         // Group & Invitation Functions

@@ -7591,7 +7591,7 @@
                     
                     if (!shareDataStr) {
                         alert('Share link expired or invalid');
-                        window.location.href = 'login.html';
+                        window.location.href = 'index.html';
                         return;
                     }
                     
@@ -8270,7 +8270,7 @@
         // Logout
         async function logout() {
             await sb.auth.signOut();
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
         }
 
         // Auto-save disabled - causing 400 error loop

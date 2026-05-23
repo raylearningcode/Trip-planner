@@ -3611,10 +3611,20 @@
 
         // Weather Functions
         async function fetchWeather() {
-            const destination = document.getElementById('destination').value;
+            const destEl = document.getElementById('destination');
+            const weatherWidget = document.getElementById('weatherWidget');
+            const weatherContent = document.getElementById('weatherContent');
+            
+            // Safety checks
+            if (!destEl || !weatherWidget || !weatherContent) {
+                console.warn('Weather elements not found in DOM');
+                return;
+            }
+            
+            const destination = destEl.value;
             if (!destination || destination.trim() === '') {
                 console.log('⚠️ No destination set, hiding weather widget');
-                document.getElementById('weatherWidget').style.display = 'none';
+                weatherWidget.style.display = 'none';
                 return;
             }
 
@@ -3622,8 +3632,8 @@
             
             try {
                 // Show weather widget with loading
-                document.getElementById('weatherWidget').style.display = 'block';
-                document.getElementById('weatherContent').innerHTML = `
+                weatherWidget.style.display = 'block';
+                weatherContent.innerHTML = `
                     <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
                         <div style="font-size: 48px; margin-bottom: 12px;">🌤️</div>
                         <div>Loading weather data...</div>
@@ -3661,12 +3671,14 @@
                 
             } catch (error) {
                 console.error('❌ Weather fetch error:', error);
-                document.getElementById('weatherContent').innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                        <p>Unable to fetch weather for "${destination}"</p>
-                        <button class="btn btn-secondary btn-sm" onclick="refreshWeather()" style="margin-top: 12px;">Try Again</button>
-                    </div>
-                `;
+                if (weatherContent) {
+                    weatherContent.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                            <p>Unable to fetch weather for "${destination}"</p>
+                            <button class="btn btn-secondary btn-sm" onclick="refreshWeather()" style="margin-top: 12px;">Try Again</button>
+                        </div>
+                    `;
+                }
             }
         }
 
@@ -3762,7 +3774,10 @@
                 </div>
             `;
             
-            document.getElementById('weatherContent').innerHTML = html;
+            const weatherContent = document.getElementById('weatherContent');
+            if (weatherContent) {
+                weatherContent.innerHTML = html;
+            }
         }
 
         function refreshWeather() {
@@ -7142,50 +7157,67 @@
             const savedEur = saved / exchangeRate;
             const progress = total > 0 ? Math.min(100, (saved / total) * 100) : 0;
 
+            // Helper to safely set text content
+            const safeSetText = (id, text) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = text;
+            };
+            
+            const safeSetStyle = (id, prop, value) => {
+                const el = document.getElementById(id);
+                if (el) el.style[prop] = value;
+            };
+
             // Budget page stats
-            document.getElementById('mustTotal').textContent = formatEur(mustEur);
-            document.getElementById('mustTotalIdr').textContent = formatCurrency(must);
-            document.getElementById('flexibleTotal').textContent = formatEur(flexEur);
-            document.getElementById('flexibleTotalIdr').textContent = formatCurrency(flex);
-            document.getElementById('optionalTotal').textContent = formatEur(optEur);
-            document.getElementById('optionalTotalIdr').textContent = formatCurrency(opt);
+            safeSetText('mustTotal', formatEur(mustEur));
+            safeSetText('mustTotalIdr', formatCurrency(must));
+            safeSetText('flexibleTotal', formatEur(flexEur));
+            safeSetText('flexibleTotalIdr', formatCurrency(flex));
+            safeSetText('optionalTotal', formatEur(optEur));
+            safeSetText('optionalTotalIdr', formatCurrency(opt));
             
             // Overview stats
-            document.getElementById('totalBudgetStat').textContent = formatEur(totalEur);
-            document.getElementById('totalBudgetIdr').textContent = formatCurrency(total);
-            document.getElementById('savedStat').textContent = formatEur(savedEur);
-            document.getElementById('savedIdr').textContent = formatCurrency(saved);
-            document.getElementById('budgetSaved').textContent = Math.round(progress) + '%';
-            document.getElementById('budgetQuick').textContent = formatEur(totalEur);
-            document.getElementById('overviewProgress').style.width = progress + '%';
+            safeSetText('totalBudgetStat', formatEur(totalEur));
+            safeSetText('totalBudgetIdr', formatCurrency(total));
+            safeSetText('savedStat', formatEur(savedEur));
+            safeSetText('savedIdr', formatCurrency(saved));
+            safeSetText('budgetSaved', Math.round(progress) + '%');
+            safeSetText('budgetQuick', formatEur(totalEur));
+            safeSetStyle('overviewProgress', 'width', progress + '%');
 
             // Days until
-            const dep = new Date(document.getElementById('departureDate').value);
-            const today = new Date();
-            const days = Math.ceil((dep - today) / (1000 * 60 * 60 * 24));
-            document.getElementById('daysUntil').textContent = days > 0 ? days : '0';
-            document.getElementById('daysRemainingStat').textContent = days > 0 ? days : 'Started!';
-
-            // Duration
-            const ret = new Date(document.getElementById('returnDate').value);
-            const duration = Math.ceil((ret - dep) / (1000 * 60 * 60 * 24)) + 1;
-            document.getElementById('durationStat').textContent = duration + ' Days';
-
-            // Tasks
-            const totalTasks = tripData.logistics.length;
-            const doneTasks = tripData.logistics.filter(t => t.status).length;
-            document.getElementById('tasksComplete').textContent = doneTasks + '/' + totalTasks;
+            const depEl = document.getElementById('departureDate');
+            const retEl = document.getElementById('returnDate');
             
-            // Date range
-            const depStr = dep.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const retStr = ret.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            document.getElementById('tripDateRange').textContent = depStr + ' - ' + retStr;
+            if (depEl && depEl.value && retEl && retEl.value) {
+                const dep = new Date(depEl.value);
+                const ret = new Date(retEl.value);
+                const today = new Date();
+                const days = Math.ceil((dep - today) / (1000 * 60 * 60 * 24));
+                
+                safeSetText('daysUntil', days > 0 ? days : '0');
+                safeSetText('daysRemainingStat', days > 0 ? days : 'Started!');
 
-            // Update overview summary
-            updateOverviewSummary();
-            
-            // Update Timeline Stats
-            updateTimelineStats(days, progress, totalTasks, doneTasks);
+                // Duration
+                const duration = Math.ceil((ret - dep) / (1000 * 60 * 60 * 24)) + 1;
+                safeSetText('durationStat', duration + ' Days');
+                
+                // Date range
+                const depStr = dep.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const retStr = ret.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                safeSetText('tripDateRange', depStr + ' - ' + retStr);
+
+                // Tasks
+                const totalTasks = tripData.logistics.length;
+                const doneTasks = tripData.logistics.filter(t => t.status).length;
+                safeSetText('tasksComplete', doneTasks + '/' + totalTasks);
+
+                // Update overview summary
+                updateOverviewSummary();
+                
+                // Update Timeline Stats
+                updateTimelineStats(days, progress, totalTasks, doneTasks);
+            }
         }
 
         function updateTimelineStats(daysUntil, budgetProgress, totalTasks, doneTasks) {

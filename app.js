@@ -1566,6 +1566,19 @@
             if (destEl) destEl.value = tripData.overview.destination;
             if (depEl) depEl.value = tripData.overview.departureDate;
             if (retEl) retEl.value = tripData.overview.returnDate;
+            
+            // Update sidebar date display immediately (visible on all pages)
+            if (tripData.overview.departureDate && tripData.overview.returnDate) {
+                const dep = new Date(tripData.overview.departureDate);
+                const ret = new Date(tripData.overview.returnDate);
+                const depStr = dep.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const retStr = ret.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const tripDateEl = document.getElementById('tripDateRange');
+                if (tripDateEl) {
+                    tripDateEl.textContent = depStr + ' - ' + retStr;
+                    console.log('📅 Updated sidebar dates:', depStr + ' - ' + retStr);
+                }
+            }
 
             renderAll();
             updateAllStats();

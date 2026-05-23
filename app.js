@@ -1561,6 +1561,10 @@
                 });
             }
 
+            console.log('🔍 About to query DOM elements...');
+            console.log('🔍 document.getElementById available?', typeof document.getElementById);
+            console.log('🔍 Testing getElementById("overview"):', document.getElementById('overview'));
+            
             const destEl = document.getElementById('destination');
             const depEl = document.getElementById('departureDate');
             const retEl = document.getElementById('returnDate');
@@ -7603,7 +7607,9 @@
 
         // Initialize
         window.addEventListener('load', async () => {
+            const APP_VERSION = 'v2024-05-24-DEBUG-FULL';
             console.log('🎬 Window loaded, starting initialization...');
+            console.log('📦 APP.JS VERSION:', APP_VERSION);
             console.log('📄 Current page:', window.location.pathname);
             console.log('📄 Document title:', document.title);
             

@@ -1021,50 +1021,22 @@
         function showGlobalSearch() {
             showModal(`
                 <div class="modal-header">
-                    <div class="modal-title">🔍 Search & Filter</div>
+                    <div class="modal-title">🔍 Search Trip</div>
                     <button class="modal-close" onclick="closeModal()">×</button>
                 </div>
                 <div class="modal-body">
                     <input type="text" id="globalSearchInput" placeholder="Search destinations, bookings, notes, activities..." 
                            style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; 
-                                  background: var(--bg-main); color: var(--text-primary); font-size: 14px; margin-bottom: 12px;"
+                                  background: var(--bg-main); color: var(--text-primary); font-size: 14px; margin-bottom: 16px;"
                            oninput="performGlobalSearch()" autofocus>
-                    
-                    <!-- Advanced Filters -->
-                    <details style="margin-bottom: 16px;">
-                        <summary style="cursor: pointer; padding: 8px; background: var(--bg-hover); border-radius: 8px; color: var(--text-secondary); font-size: 13px;">🎛️ Advanced Filters</summary>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; padding: 12px; background: var(--bg-hover); border-radius: 8px;">
-                            <div>
-                                <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Type</label>
-                                <select id="filterType" onchange="performGlobalSearch()" style="width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-main); color: var(--text-primary); font-size: 12px;">
-                                    <option value="all">All</option>
-                                    <option value="destination">Destinations</option>
-                                    <option value="booking">Bookings</option>
-                                    <option value="activity">Activities</option>
-                                    <option value="packing">Packing</option>
-                                </select>
-                            </div>
-                            <div style="display: flex; align-items: flex-end;">
-                                <button onclick="clearSearchFilters()" style="width: 100%; padding: 6px; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); border-radius: 6px; cursor: pointer; font-size: 12px;">Clear</button>
-                            </div>
-                        </div>
-                    </details>
                     
                     <div id="searchResults" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
             `);
-            performGlobalSearch(); // Initial search
-        }
-        
-        function clearSearchFilters() {
-            document.getElementById('globalSearchInput').value = '';
-            document.getElementById('filterType').value = 'all';
-            performGlobalSearch();
         }
         
         function performGlobalSearch() {
             const query = document.getElementById('globalSearchInput')?.value || '';
-            const filterType = document.getElementById('filterType')?.value || 'all';
             
             if (!query || query.length < 2) {
                 const resultsDiv = document.getElementById('searchResults');
@@ -1078,58 +1050,49 @@
             const lowerQuery = query.toLowerCase();
             
             // Search destinations
-            if (filterType === 'all' || filterType === 'destination') {
-                ['main', 'optional', 'other', 'restaurants'].forEach(type => {
-                    (tripData.destinations[type] || []).forEach((dest, idx) => {
-                        if (dest.name?.toLowerCase().includes(lowerQuery) || dest.address?.toLowerCase().includes(lowerQuery)) {
-                            results.push({ type: 'Destination', name: dest.name, page: 'destinations', icon: '📍', category: type });
-                        }
-                    });
+            ['main', 'optional', 'other', 'restaurants'].forEach(type => {
+                (tripData.destinations[type] || []).forEach((dest, idx) => {
+                    if (dest.name?.toLowerCase().includes(lowerQuery) || dest.address?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Destination', name: dest.name, page: 'destinations', icon: '📍' });
+                    }
                 });
-            }
+            });
             
             // Search bookings
-            if (filterType === 'all' || filterType === 'booking') {
-                (tripData.bookings || []).forEach(booking => {
-                    if (booking.type?.toLowerCase().includes(lowerQuery) || booking.name?.toLowerCase().includes(lowerQuery)) {
-                        results.push({ type: 'Booking', name: `${booking.type}: ${booking.name}`, page: 'bookings', icon: '🎫', status: booking.status || 'pending' });
-                    }
-                });
-            }
+            (tripData.bookings || []).forEach(booking => {
+                if (booking.type?.toLowerCase().includes(lowerQuery) || booking.name?.toLowerCase().includes(lowerQuery)) {
+                    results.push({ type: 'Booking', name: `${booking.type}: ${booking.name}`, page: 'bookings', icon: '🎫' });
+                }
+            });
             
             // Search itinerary/activities
-            if (filterType === 'all' || filterType === 'activity') {
-                (tripData.dayPlans || []).forEach((day, idx) => {
-                    if (day.city?.toLowerCase().includes(lowerQuery)) {
-                        results.push({ type: 'Itinerary', name: `Day ${idx + 1} - ${day.city}`, page: 'itinerary', icon: '📅' });
+            (tripData.dayPlans || []).forEach((day, idx) => {
+                if (day.city?.toLowerCase().includes(lowerQuery)) {
+                    results.push({ type: 'Itinerary', name: `Day ${idx + 1} - ${day.city}`, page: 'itinerary', icon: '📅' });
+                }
+                if (day.collaborativeNotes?.toLowerCase().includes(lowerQuery)) {
+                    results.push({ type: 'Note', name: `Day ${idx + 1} notes`, page: 'itinerary', icon: '💬' });
+                }
+                (day.activities || []).forEach(act => {
+                    if (act.activity?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Activity', name: act.activity, page: 'itinerary', icon: '⚡' });
                     }
-                    if (day.collaborativeNotes?.toLowerCase().includes(lowerQuery)) {
-                        results.push({ type: 'Note', name: `Day ${idx + 1} notes`, page: 'itinerary', icon: '💬' });
-                    }
-                    (day.activities || []).forEach(act => {
-                        if (act.activity?.toLowerCase().includes(lowerQuery)) {
-                            results.push({ type: 'Activity', name: act.activity, page: 'itinerary', icon: '⚡' });
-                        }
-                    });
                 });
-            }
+            });
             
             // Search packing
-            if (filterType === 'all' || filterType === 'packing') {
-                (tripData.packing || []).forEach(cat => {
-                    cat.items.forEach(item => {
-                        if (item.name?.toLowerCase().includes(lowerQuery)) {
-                            results.push({ type: 'Packing', name: item.name, page: 'packing', icon: '🎒', packed: item.packed });
-                        }
-                    });
+            (tripData.packing || []).forEach(cat => {
+                cat.items.forEach(item => {
+                    if (item.name?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Packing', name: item.name, page: 'packing', icon: '🎒' });
+                    }
                 });
-            }
+            });
             
-            // Display results with count
+            // Display results
             const resultsDiv = document.getElementById('searchResults');
             if (resultsDiv) {
                 if (results.length > 0) {
-                    const countText = `<div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; padding: 8px; background: var(--bg-hover); border-radius: 6px;">Found ${results.length} result${results.length > 1 ? 's' : ''}</div>`;
                     const resultsHTML = results.map(r => `
                         <div onclick="showPage('${r.page}'); closeModal();" style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
                              onmouseover="this.style.background='var(--primary)'; this.style.color='white'" 
@@ -1138,16 +1101,15 @@
                             <div style="font-weight: 600;">${r.name}</div>
                         </div>
                     `).join('');
-                    resultsDiv.innerHTML = countText + resultsHTML;
+                    resultsDiv.innerHTML = resultsHTML;
                 } else {
-                    resultsDiv.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 40px;">No results found. Try different keywords or clear filters.</p>';
+                    resultsDiv.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 40px;">No results found</p>';
                 }
             }
         }
         
         window.showGlobalSearch = showGlobalSearch;
         window.performGlobalSearch = performGlobalSearch;
-        window.clearSearchFilters = clearSearchFilters;
         
         // ========================================
         // LOADING SKELETONS
@@ -1377,166 +1339,89 @@
         // ========================================
         
         // ========================================
-        // TRIP SHARING & TEMPLATES
+        // ACCOUNT DELETION
         // ========================================
         
-        async function makeTrip Public() {
-            const response = await showModal(`
-                <div class="modal-header">
-                    <div class="modal-title">🌍 Share Your Trip</div>
-                    <button class="modal-close" onclick="closeModal()">×</button>
-                </div>
-                <div class="modal-body">
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Template Name</label>
-                        <input type="text" id="templateName" value="${tripData.overview.destination} Trip" 
-                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-main); color: var(--text-primary);">
-                    </div>
-                    
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Description</label>
-                        <textarea id="templateDesc" rows="3" placeholder="Tell others about your amazing trip..." 
-                                  style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-main); color: var(--text-primary);">
-                        </textarea>
-                    </div>
-                    
-                    <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-                        <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Share Options:</div>
-                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
-                            <input type="checkbox" id="shareItinerary" checked>
-                            <span>Share itinerary and day plans</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
-                            <input type="checkbox" id="shareDestinations" checked>
-                            <span>Share destinations list</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="shareBudget">
-                            <span>Share budget categories (amounts hidden)</span>
-                        </label>
-                    </div>
-                    
-                    <div style="background: #fef3c7; color: #92400e; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;">
-                        ⚠️ Your trip will be visible to all users. Personal information like names and specific bookings won't be shared.
-                    </div>
-                    
-                    <div style="display: flex; gap: 12px;">
-                        <button onclick="closeModal()" style="flex: 1; padding: 12px; background: transparent; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--text-secondary);">
-                            Cancel
-                        </button>
-                        <button onclick="confirmMakeTripPublic()" style="flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                            Make Public
-                        </button>
-                    </div>
-                </div>
-            `);
-        }
-        
-        async function confirmMakeTripPublic() {
-            const name = document.getElementById('templateName').value;
-            const description = document.getElementById('templateDesc').value;
-            const shareItinerary = document.getElementById('shareItinerary').checked;
-            const shareDestinations = document.getElementById('shareDestinations').checked;
-            const shareBudget = document.getElementById('shareBudget').checked;
+        async function deleteAccount() {
+            const confirmed = confirm('⚠️ DELETE ACCOUNT?\n\nThis will permanently delete:\n- Your account\n- All your trips\n- All your data\n\nThis action CANNOT be undone!\n\nType DELETE to confirm.');
             
-            if (!name.trim()) {
-                alert('Please enter a template name');
+            if (!confirmed) return;
+            
+            const verification = prompt('Type DELETE (all caps) to confirm account deletion:');
+            
+            if (verification !== 'DELETE') {
+                alert('Account deletion cancelled.');
                 return;
             }
             
             try {
-                const { error } = await sb
+                showLoadingToast('Deleting account...');
+                
+                // Delete all user's trips first
+                const { error: tripsError } = await sb
                     .from('trips')
-                    .update({
-                        is_public: true,
-                        template_name: name,
-                        template_description: description,
-                        template_tags: [tripData.overview.destination?.split(' ')[0] || 'Travel']
-                    })
-                    .eq('id', currentTrip);
+                    .delete()
+                    .eq('owner_id', user.id);
                 
-                if (error) throw error;
+                if (tripsError) throw tripsError;
                 
-                closeModal();
-                showSuccessToast('🎉 Trip is now public! Others can find and clone it.');
+                // Delete all trip data
+                const { error: tripDataError } = await sb
+                    .from('trip_data')
+                    .delete()
+                    .eq('user_id', user.id);
                 
-                // Add option to view in browse page
-                setTimeout(() => {
-                    if (confirm('View your trip in Browse Templates?')) {
-                        window.open(`browse.html?search=${encodeURIComponent(name)}`, '_blank');
-                    }
-                }, 1000);
+                if (tripDataError) throw tripDataError;
+                
+                // Delete shared trip data
+                const { error: sharedDataError } = await sb
+                    .from('shared_trip_data')
+                    .delete()
+                    .eq('created_by', user.id);
+                
+                if (sharedDataError) console.warn('Shared data cleanup:', sharedDataError);
+                
+                // Delete notifications
+                const { error: notifsError } = await sb
+                    .from('notifications')
+                    .delete()
+                    .eq('user_id', user.id);
+                
+                if (notifsError) console.warn('Notifications cleanup:', notifsError);
+                
+                // Delete profile
+                const { error: profileError } = await sb
+                    .from('profiles')
+                    .delete()
+                    .eq('id', user.id);
+                
+                if (profileError) throw profileError;
+                
+                // Delete auth user (requires admin privileges or RPC)
+                // This will be handled by Supabase triggers
+                const { error: authError } = await sb.auth.admin.deleteUser(user.id);
+                if (authError) console.warn('Auth deletion (may require manual cleanup):', authError);
+                
+                // Sign out
+                await sb.auth.signOut();
+                
+                // Clear all local data
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                alert('✅ Account deleted successfully. Goodbye!');
+                window.location.href = 'index.html';
                 
             } catch (error) {
-                console.error('Error making trip public:', error);
-                alert('Failed to make trip public: ' + error.message);
+                console.error('Error deleting account:', error);
+                alert('Failed to delete account: ' + error.message + '\n\nPlease contact support.');
             }
         }
         
-        async function cloneTrip(templateId) {
-            if (!confirm('Clone this trip? This will create a new trip based on this template.')) {
-                return;
-            }
-            
-            try {
-                // Get template data
-                const { data: template, error: fetchError } = await sb
-                    .from('trips')
-                    .select('*, shared_trip_data(*)')
-                    .eq('id', templateId)
-                    .single();
-                
-                if (fetchError) throw fetchError;
-                
-                // Create new trip
-                const { data: newTrip, error: createError } = await sb
-                    .from('trips')
-                    .insert({
-                        owner_id: user.id,
-                        destination: template.destination,
-                        departure_date: null,
-                        return_date: null,
-                        is_public: false
-                    })
-                    .select()
-                    .single();
-                
-                if (createError) throw createError;
-                
-                // Copy shared data (simplified - just copy destinations)
-                const destinationsData = template.shared_trip_data?.find(d => d.data_type === 'destinations');
-                if (destinationsData) {
-                    await sb.from('shared_trip_data').insert({
-                        trip_id: newTrip.id,
-                        data_type: 'destinations',
-                        data: destinationsData.data
-                    });
-                }
-                
-                // Increment clone count
-                await sb
-                    .from('trips')
-                    .update({ clone_count: (template.clone_count || 0) + 1 })
-                    .eq('id', templateId);
-                
-                // Navigate to new trip
-                showSuccessToast('Trip cloned! Redirecting...');
-                setTimeout(() => {
-                    window.location.href = `app.html?trip=${newTrip.id}`;
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Error cloning trip:', error);
-                alert('Failed to clone trip: ' + error.message);
-            }
-        }
-        
-        window.makeTripPublic = makeTripPublic;
-        window.confirmMakeTripPublic = confirmMakeTripPublic;
-        window.cloneTrip = cloneTrip;
+        window.deleteAccount = deleteAccount;
         
         // ========================================
-        // END TRIP SHARING & TEMPLATES
+        // END ACCOUNT DELETION
         // ========================================
         
         // ========================================
@@ -2695,17 +2580,31 @@
         
         // EXPORT TO PDF
         async function exportToPDF() {
-            const tripName = document.getElementById('destination').value || 'My Trip';
-            const departure = document.getElementById('departureDate').value;
-            const returnDate = document.getElementById('returnDate').value;
+            const tripName = (document.getElementById('destination')?.value || 'My Trip').replace(/[^\w\s-]/g, '').trim();
+            const departure = document.getElementById('departureDate')?.value;
+            const returnDate = document.getElementById('returnDate')?.value;
             
-            // Improved PDF with better styling
+            // Helper function to clean text for PDF (remove emojis and special chars)
+            const cleanText = (text) => {
+                if (!text) return '';
+                return String(text)
+                    .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+                    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc Symbols
+                    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport
+                    .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols
+                    .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+                    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental Symbols
+                    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '') // Symbols
+                    .replace(/[^\x00-\x7F]/g, '')            // Remove non-ASCII
+                    .trim();
+            };
+            
+            // Improved PDF with clean text only
             let content = `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 60px 40px; background: white;">
+                <div style="font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 60px 40px; background: white; color: #000;">
                     <!-- Header -->
                     <div style="text-align: center; margin-bottom: 50px; padding-bottom: 30px; border-bottom: 3px solid #6366f1;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">✈️</div>
-                        <h1 style="font-size: 42px; color: #1e293b; margin: 0 0 12px 0; font-weight: 700; letter-spacing: -1px;">${tripName}</h1>
+                        <h1 style="font-size: 42px; color: #1e293b; margin: 0 0 12px 0; font-weight: 700;">${cleanText(tripName)}</h1>
                         <p style="font-size: 18px; color: #64748b; margin: 0;">
                             ${departure ? new Date(departure).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date TBD'} - 
                             ${returnDate ? new Date(returnDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date TBD'}
@@ -2713,7 +2612,7 @@
                     </div>
                     
                     <!-- Quick Stats -->
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 50px; page-break-inside: avoid;">
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 50px;">
                         <div style="background: #f8fafc; padding: 24px; border-radius: 12px; text-align: center; border-left: 4px solid #6366f1;">
                             <div style="font-size: 32px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">${tripData.dayPlans?.length || 0}</div>
                             <div style="font-size: 14px; color: #64748b; font-weight: 600;">DAYS</div>
@@ -2729,9 +2628,9 @@
                     </div>
                     
                     <!-- Itinerary Section -->
-                    <div style="page-break-before: always; margin-bottom: 50px;">
+                    <div style="margin-bottom: 50px;">
                         <h2 style="font-size: 28px; color: #1e293b; margin-bottom: 30px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">
-                            📅 Day-by-Day Itinerary
+                            DAY-BY-DAY ITINERARY
                         </h2>
             `;
             
@@ -2742,12 +2641,12 @@
                                      typeof day.activities === 'string' ? day.activities.split('\n').filter(Boolean) : [];
                     
                     content += `
-                        <div style="margin-bottom: 40px; page-break-inside: avoid; background: #f8fafc; padding: 24px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                        <div style="margin-bottom: 40px; background: #f8fafc; padding: 24px; border-radius: 12px; border-left: 4px solid #6366f1;">
                             <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
                                 <h3 style="font-size: 24px; color: #1e293b; margin: 0; font-weight: 700;">Day ${idx + 1}</h3>
                                 <span style="font-size: 14px; color: #64748b; font-weight: 600;">${day.date ? new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
                             </div>
-                            <p style="font-size: 16px; color: #6366f1; margin: 0 0 16px 0; font-weight: 600;">📍 ${day.city || 'Location TBD'}</p>
+                            <p style="font-size: 16px; color: #6366f1; margin: 0 0 16px 0; font-weight: 600;">Location: ${cleanText(day.city) || 'TBD'}</p>
                             
                             ${activities.length > 0 ? `
                                 <div style="margin-top: 16px;">
@@ -2756,10 +2655,10 @@
                                         return `
                                             <div style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
                                                 <div style="display: flex; gap: 12px; align-items: start;">
-                                                    ${actObj.timeStart ? `<span style="color: #6366f1; font-weight: 600; font-size: 14px; min-width: 80px;">${actObj.timeStart}</span>` : ''}
+                                                    ${actObj.timeStart ? `<span style="color: #6366f1; font-weight: 600; font-size: 14px; min-width: 80px;">${cleanText(actObj.timeStart)}</span>` : ''}
                                                     <div style="flex: 1;">
-                                                        <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">${actObj.activity || actObj}</div>
-                                                        ${actObj.location ? `<div style="font-size: 13px; color: #64748b;">📍 ${actObj.location}</div>` : ''}
+                                                        <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">${cleanText(actObj.activity || actObj)}</div>
+                                                        ${actObj.location ? `<div style="font-size: 13px; color: #64748b;">Location: ${cleanText(actObj.location)}</div>` : ''}
                                                     </div>
                                                 </div>
                                             </div>
@@ -2770,8 +2669,8 @@
                             
                             ${day.collaborativeNotes ? `
                                 <div style="margin-top: 20px; padding: 16px; background: white; border-radius: 8px; border-left: 3px solid #a855f7;">
-                                    <div style="font-size: 12px; color: #a855f7; font-weight: 700; margin-bottom: 8px; text-transform: uppercase;">💬 Shared Notes</div>
-                                    <p style="color: #475569; white-space: pre-wrap; margin: 0; line-height: 1.6;">${day.collaborativeNotes}</p>
+                                    <div style="font-size: 12px; color: #a855f7; font-weight: 700; margin-bottom: 8px;">SHARED NOTES</div>
+                                    <p style="color: #475569; white-space: pre-wrap; margin: 0; line-height: 1.6;">${cleanText(day.collaborativeNotes)}</p>
                                 </div>
                             ` : ''}
                         </div>
@@ -2786,9 +2685,9 @@
             // Add destinations
             if ((tripData.destinations.main?.length || 0) + (tripData.destinations.optional?.length || 0) > 0) {
                 content += `
-                    <div style="page-break-before: always; margin-bottom: 50px;">
+                    <div style="margin-bottom: 50px;">
                         <h2 style="font-size: 28px; color: #1e293b; margin-bottom: 30px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">
-                            📍 Destinations
+                            DESTINATIONS
                         </h2>
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
                 `;
@@ -2796,8 +2695,8 @@
                 [...(tripData.destinations.main || []), ...(tripData.destinations.optional || [])].forEach(dest => {
                     content += `
                         <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
-                            <h4 style="font-size: 18px; color: #1e293b; margin: 0 0 8px 0; font-weight: 700;">${dest.city}, ${dest.country}</h4>
-                            ${dest.notes ? `<p style="font-size: 14px; color: #64748b; margin: 0;">${dest.notes}</p>` : ''}
+                            <h4 style="font-size: 18px; color: #1e293b; margin: 0 0 8px 0; font-weight: 700;">${cleanText(dest.city)}, ${cleanText(dest.country)}</h4>
+                            ${dest.notes ? `<p style="font-size: 14px; color: #64748b; margin: 0;">${cleanText(dest.notes)}</p>` : ''}
                         </div>
                     `;
                 });
@@ -2808,17 +2707,17 @@
             // Add bookings
             if (tripData.bookings && tripData.bookings.length > 0) {
                 content += `
-                    <div style="page-break-before: always; margin-bottom: 50px;">
+                    <div style="margin-bottom: 50px;">
                         <h2 style="font-size: 28px; color: #1e293b; margin-bottom: 30px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">
-                            🎫 Bookings & Reservations
+                            BOOKINGS & RESERVATIONS
                         </h2>
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
                                 <tr style="background: #f1f5f9;">
-                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;">Type</th>
-                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;">Details</th>
-                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;">Date & Time</th>
-                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;">Confirmation</th>
+                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b;">TYPE</th>
+                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b;">DETAILS</th>
+                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b;">DATE & TIME</th>
+                                    <th style="padding: 16px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b;">CONFIRMATION</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2827,10 +2726,10 @@
                 tripData.bookings.forEach((b, idx) => {
                     content += `
                         <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 0 ? 'background: #f8fafc;' : ''}">
-                            <td style="padding: 16px; font-weight: 600; color: #6366f1;">${b.type}</td>
-                            <td style="padding: 16px; color: #1e293b;">${b.name}</td>
+                            <td style="padding: 16px; font-weight: 600; color: #6366f1;">${cleanText(b.type)}</td>
+                            <td style="padding: 16px; color: #1e293b;">${cleanText(b.name)}</td>
                             <td style="padding: 16px; color: #64748b;">${b.datetime ? new Date(b.datetime).toLocaleString() : 'TBD'}</td>
-                            <td style="padding: 16px; font-family: monospace; color: #10b981; font-weight: 600;">${b.confirmation || '-'}</td>
+                            <td style="padding: 16px; font-weight: 600;">${cleanText(b.confirmation) || '-'}</td>
                         </tr>
                     `;
                 });
@@ -2841,9 +2740,9 @@
             // Add emergency contacts
             if (tripData.emergencyContacts && tripData.emergencyContacts.length > 0) {
                 content += `
-                    <div style="page-break-before: always; margin-bottom: 50px;">
+                    <div style="margin-bottom: 50px;">
                         <h2 style="font-size: 28px; color: #ef4444; margin-bottom: 30px; padding-bottom: 12px; border-bottom: 2px solid #fee2e2; font-weight: 700;">
-                            🚨 Emergency Contacts
+                            EMERGENCY CONTACTS
                         </h2>
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
                 `;
@@ -2851,9 +2750,9 @@
                 tripData.emergencyContacts.forEach(contact => {
                     content += `
                         <div style="background: #fef2f2; padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
-                            <h4 style="font-size: 18px; color: #1e293b; margin: 0 0 8px 0; font-weight: 700;">${contact.name}</h4>
-                            <p style="font-size: 16px; color: #ef4444; margin: 4px 0; font-weight: 600;">📞 ${contact.phone}</p>
-                            ${contact.relationship ? `<p style="font-size: 14px; color: #64748b; margin: 4px 0;">${contact.relationship}</p>` : ''}
+                            <h4 style="font-size: 18px; color: #1e293b; margin: 0 0 8px 0; font-weight: 700;">${cleanText(contact.name)}</h4>
+                            <p style="font-size: 16px; color: #ef4444; margin: 4px 0; font-weight: 600;">Phone: ${cleanText(contact.phone)}</p>
+                            ${contact.relationship ? `<p style="font-size: 14px; color: #64748b; margin: 4px 0;">${cleanText(contact.relationship)}</p>` : ''}
                         </div>
                     `;
                 });
@@ -2863,7 +2762,7 @@
             
             content += `
                     <div style="text-align: center; margin-top: 80px; padding-top: 40px; border-top: 2px solid #e2e8f0; color: #94a3b8; font-size: 14px;">
-                        <p style="margin: 0;">Generated by Trip Planner Pro</p>
+                        <p style="margin: 0;">Generated by Trip Planner</p>
                         <p style="margin: 8px 0 0 0;">${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                     </div>
                 </div>
@@ -2875,26 +2774,30 @@
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>${tripName} - Complete Itinerary</title>
+                    <meta charset="UTF-8">
+                    <title>${cleanText(tripName)} - Itinerary</title>
                     <style>
                         @media print {
                             button { display: none !important; }
                             @page { margin: 1.5cm; }
                         }
                         body { margin: 0; padding: 0; }
+                        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     </style>
                 </head>
                 <body>
                     ${content}
                     <div style="text-align: center; margin: 40px 0;">
-                        <button onclick="window.print()" style="background: linear-gradient(135deg, #6366f1, #a855f7); color: white; padding: 16px 48px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
-                            🖨️ Print / Save as PDF
+                        <button onclick="window.print()" style="background: #6366f1; color: white; padding: 16px 48px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer;">
+                            Print / Save as PDF
                         </button>
                     </div>
                 </body>
                 </html>
             `);
             printWindow.document.close();
+            
+            showSuccessToast('PDF export opened in new window');
         }
         
         // Print single day
@@ -8739,6 +8642,60 @@
             await sb.auth.signOut();
             window.location.href = 'index.html';
         }
+        
+        async function deleteAccount() {
+            const confirmed = confirm('⚠️ DELETE ACCOUNT?\n\nThis will permanently delete:\n• Your account\n• All your trips\n• All your data\n\nThis action CANNOT be undone!\n\nType "DELETE" in the next prompt to confirm.');
+            
+            if (!confirmed) return;
+            
+            const confirmText = prompt('Type DELETE (all caps) to confirm account deletion:');
+            
+            if (confirmText !== 'DELETE') {
+                alert('Account deletion cancelled.');
+                return;
+            }
+            
+            try {
+                showLoadingToast('Deleting account...');
+                
+                // Delete all trips owned by user
+                const { error: tripsError } = await sb
+                    .from('trips')
+                    .delete()
+                    .eq('owner_id', user.id);
+                
+                if (tripsError) throw tripsError;
+                
+                // Delete trip data
+                const { error: dataError } = await sb
+                    .from('trip_data')
+                    .delete()
+                    .eq('user_id', user.id);
+                
+                if (dataError) throw dataError;
+                
+                // Delete notifications
+                await sb.from('notifications').delete().eq('user_id', user.id);
+                
+                // Delete profile
+                await sb.from('profiles').delete().eq('id', user.id);
+                
+                // Delete auth account
+                const { error: authError } = await sb.auth.admin.deleteUser(user.id);
+                
+                // Sign out
+                await sb.auth.signOut();
+                
+                alert('✅ Account deleted successfully. Redirecting to homepage...');
+                window.location.href = 'index.html';
+                
+            } catch (error) {
+                console.error('Error deleting account:', error);
+                alert('Failed to delete account. Please contact support.\n\nError: ' + error.message);
+            }
+        }
+        
+        window.deleteAccount = deleteAccount;
 
         // Auto-save disabled - causing 400 error loop
         // setInterval(saveDataSync, 30000);

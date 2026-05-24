@@ -1036,12 +1036,19 @@
         }
         
         function performGlobalSearch() {
-            const query = document.getElementById('globalSearchInput')?.value || '';
+            // Support both modal search (Ctrl+K) and overview search
+            const modalInput = document.getElementById('globalSearchInput');
+            const overviewInput = document.getElementById('overviewSearchInput');
+            const query = (modalInput?.value || overviewInput?.value || '').trim();
+            
+            // Determine which results div to use
+            const modalResults = document.getElementById('searchResults');
+            const overviewResults = document.getElementById('overviewSearchResults');
+            const resultsDiv = overviewResults || modalResults;
             
             if (!query || query.length < 2) {
-                const resultsDiv = document.getElementById('searchResults');
                 if (resultsDiv) {
-                    resultsDiv.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Type at least 2 characters to search...</p>';
+                    resultsDiv.innerHTML = '';
                 }
                 return;
             }
@@ -1052,8 +1059,11 @@
             // Search destinations
             ['main', 'optional', 'other', 'restaurants'].forEach(type => {
                 (tripData.destinations[type] || []).forEach((dest, idx) => {
-                    if (dest.name?.toLowerCase().includes(lowerQuery) || dest.address?.toLowerCase().includes(lowerQuery)) {
-                        results.push({ type: 'Destination', name: dest.name, page: 'destinations', icon: '📍' });
+                    if (dest.name?.toLowerCase().includes(lowerQuery) || 
+                        dest.address?.toLowerCase().includes(lowerQuery) ||
+                        dest.city?.toLowerCase().includes(lowerQuery) ||
+                        dest.country?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Destination', name: dest.name || dest.city, page: 'destinations', icon: '📍' });
                     }
                 });
             });
@@ -1062,6 +1072,13 @@
             (tripData.bookings || []).forEach(booking => {
                 if (booking.type?.toLowerCase().includes(lowerQuery) || booking.name?.toLowerCase().includes(lowerQuery)) {
                     results.push({ type: 'Booking', name: `${booking.type}: ${booking.name}`, page: 'bookings', icon: '🎫' });
+                }
+            });
+            
+            // Search budget
+            (tripData.budget || []).forEach(item => {
+                if (item.category?.toLowerCase().includes(lowerQuery) || item.description?.toLowerCase().includes(lowerQuery)) {
+                    results.push({ type: 'Budget', name: `${item.category}: ${item.description || 'No description'}`, page: 'budget', icon: '💰' });
                 }
             });
             
@@ -1074,8 +1091,9 @@
                     results.push({ type: 'Note', name: `Day ${idx + 1} notes`, page: 'itinerary', icon: '💬' });
                 }
                 (day.activities || []).forEach(act => {
-                    if (act.activity?.toLowerCase().includes(lowerQuery)) {
-                        results.push({ type: 'Activity', name: act.activity, page: 'itinerary', icon: '⚡' });
+                    const actText = typeof act === 'object' ? act.activity : act;
+                    if (actText?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Activity', name: actText, page: 'itinerary', icon: '⚡' });
                     }
                 });
             });
@@ -1090,20 +1108,31 @@
             });
             
             // Display results
-            const resultsDiv = document.getElementById('searchResults');
             if (resultsDiv) {
                 if (results.length > 0) {
-                    const resultsHTML = results.map(r => `
-                        <div onclick="showPage('${r.page}'); closeModal();" style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
-                             onmouseover="this.style.background='var(--primary)'; this.style.color='white'" 
-                             onmouseout="this.style.background='var(--bg-hover)'; this.style.color='var(--text-primary)'">
-                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">${r.icon} ${r.type}</div>
-                            <div style="font-weight: 600;">${r.name}</div>
+                    const isOverview = resultsDiv === overviewResults;
+                    const clickHandler = isOverview ? `showPage('PAGE')` : `showPage('PAGE'); closeModal()`;
+                    
+                    const countBadge = `<div style="display: inline-block; background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 12px;">${results.length} result${results.length > 1 ? 's' : ''}</div>`;
+                    
+                    const resultsHTML = results.slice(0, 10).map(r => `
+                        <div onclick="${clickHandler.replace('PAGE', r.page)}" 
+                             style="padding: 12px 16px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; border-left: 3px solid var(--primary);"
+                             onmouseover="this.style.background='var(--primary)'; this.style.color='white'; this.style.transform='translateX(4px)'" 
+                             onmouseout="this.style.background='var(--bg-hover)'; this.style.color='var(--text-primary)'; this.style.transform='translateX(0)'">
+                            <div style="font-size: 11px; opacity: 0.7; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">${r.icon} ${r.type}</div>
+                            <div style="font-weight: 600; font-size: 14px;">${r.name}</div>
                         </div>
                     `).join('');
-                    resultsDiv.innerHTML = resultsHTML;
+                    
+                    resultsDiv.innerHTML = countBadge + resultsHTML + (results.length > 10 ? `<div style="text-align: center; padding: 12px; color: var(--text-secondary); font-size: 12px;">Showing 10 of ${results.length} results</div>` : '');
                 } else {
-                    resultsDiv.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 40px;">No results found</p>';
+                    resultsDiv.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">🔍</div>
+                            <div style="font-size: 14px;">No results found for "${query}"</div>
+                        </div>
+                    `;
                 }
             }
         }
@@ -5068,64 +5097,6 @@
         // Group Functions
         // Group & Invitation Functions
         
-        function filterGroupContent(query) {
-            const lowerQuery = query.toLowerCase().trim();
-            
-            // Filter members
-            const memberCards = document.querySelectorAll('#membersGrid .member-card');
-            let visibleMembers = 0;
-            memberCards.forEach(card => {
-                const name = card.getAttribute('data-member-name') || '';
-                const email = card.getAttribute('data-member-email') || '';
-                const matches = name.includes(lowerQuery) || email.includes(lowerQuery);
-                card.style.display = matches ? '' : 'none';
-                if (matches) visibleMembers++;
-            });
-            
-            // Show/hide members card if no results
-            const membersCard = document.getElementById('membersCard');
-            if (membersCard && memberCards.length > 0) {
-                membersCard.style.display = visibleMembers > 0 ? '' : 'none';
-            }
-            
-            // Filter emergency contacts
-            const emergencyContacts = document.querySelectorAll('#emergencyContactsList > div');
-            let visibleContacts = 0;
-            emergencyContacts.forEach(contact => {
-                const text = contact.textContent.toLowerCase();
-                const matches = text.includes(lowerQuery);
-                contact.style.display = matches ? '' : 'none';
-                if (matches) visibleContacts++;
-            });
-            
-            // Show/hide emergency card if no results
-            const emergencyCard = document.getElementById('emergencyCard');
-            if (emergencyCard && emergencyContacts.length > 0) {
-                emergencyCard.style.display = visibleContacts > 0 ? '' : 'none';
-            }
-            
-            // Show "no results" message if nothing found
-            if (lowerQuery && visibleMembers === 0 && visibleContacts === 0) {
-                let noResultsMsg = document.getElementById('groupNoResults');
-                if (!noResultsMsg) {
-                    noResultsMsg = document.createElement('div');
-                    noResultsMsg.id = 'groupNoResults';
-                    noResultsMsg.style.cssText = 'text-align: center; padding: 60px 20px; color: var(--text-secondary);';
-                    noResultsMsg.innerHTML = `
-                        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">🔍</div>
-                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">No results found</div>
-                        <div style="font-size: 14px;">Try a different search term</div>
-                    `;
-                    document.getElementById('membersGrid').parentElement.after(noResultsMsg);
-                }
-                noResultsMsg.style.display = 'block';
-            } else {
-                const noResultsMsg = document.getElementById('groupNoResults');
-                if (noResultsMsg) noResultsMsg.style.display = 'none';
-            }
-        }
-        
-        window.filterGroupContent = filterGroupContent;
         
         function addGroupMemberManual() {
             showModal(`
@@ -6959,15 +6930,6 @@
                     attribution: '© OpenStreetMap',
                     maxZoom: 19
                 }).addTo(map);
-                
-                // Initialize marker cluster group
-                window.markers = L.markerClusterGroup({
-                    chunkedLoading: true,
-                    spiderfyOnMaxZoom: true,
-                    showCoverageOnHover: false,
-                    zoomToBoundsOnClick: true
-                });
-                map.addLayer(window.markers);
 
                 window.mapInitialized = true;
             }
@@ -6979,19 +6941,37 @@
                 script.onload = () => {
                     console.log('✅ Marker clustering loaded');
                     if (map && !window.markers) {
-                        window.markers = L.markerClusterGroup();
+                        window.markers = L.markerClusterGroup({
+                            chunkedLoading: true,
+                            spiderfyOnMaxZoom: true,
+                            showCoverageOnHover: false,
+                            zoomToBoundsOnClick: true
+                        });
                         map.addLayer(window.markers);
+                        // Populate map after clustering is ready
+                        populateCountrySelector();
+                        populateDaySelector();
+                        updateMapView();
                     }
                 };
                 document.head.appendChild(script);
+            } else {
+                // Clustering already loaded
+                if (!window.markers) {
+                    window.markers = L.markerClusterGroup({
+                        chunkedLoading: true,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: false,
+                        zoomToBoundsOnClick: true
+                    });
+                    map.addLayer(window.markers);
+                }
+                
+                // Populate selectors
+                populateCountrySelector();
+                populateDaySelector();
+                updateMapView();
             }
-            
-            // Populate selectors
-            populateCountrySelector();
-            populateDaySelector();
-            
-            // Plot destinations after map loads
-            updateMapView();
         }
 
         function populateCountrySelector() {

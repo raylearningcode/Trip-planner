@@ -168,6 +168,17 @@
                     📄 Export PDF
                 </button>
             </div>
+            
+            <!-- Search Bar -->
+            <div style="margin-bottom: 24px;">
+                <div style="position: relative;">
+                    <input type="text" id="overviewSearchInput" placeholder="🔍 Search destinations, bookings, activities, budget..." 
+                           oninput="performGlobalSearch()"
+                           style="width: 100%; padding: 14px 20px 14px 48px; background: var(--bg-card); border: 2px solid var(--border); border-radius: 12px; color: var(--text-primary); font-size: 15px; transition: all 0.3s;">
+                    <span style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); font-size: 18px; opacity: 0.5;">🔍</span>
+                </div>
+                <div id="overviewSearchResults" style="margin-top: 12px;"></div>
+            </div>
 
             <div class="stats-grid">
                 <div class="stat-card guest-hide">
@@ -627,16 +638,6 @@
                 </button>
             </div>
             
-            <!-- Search Bar -->
-            <div style="margin-bottom: 24px;">
-                <div style="position: relative;">
-                    <input type="text" id="groupSearchInput" placeholder="🔍 Search members, emergency contacts..." 
-                           oninput="filterGroupContent(this.value)"
-                           style="width: 100%; padding: 14px 20px 14px 48px; background: var(--bg-card); border: 2px solid var(--border); border-radius: 12px; color: var(--text-primary); font-size: 15px; transition: all 0.3s;">
-                    <span style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); font-size: 18px; opacity: 0.5;">🔍</span>
-                </div>
-            </div>
-
             <!-- Group Stats -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
                 <div class="stat-card">

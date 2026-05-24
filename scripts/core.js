@@ -1357,177 +1357,20 @@
         // END ACCOUNT DELETION
         // ========================================
         
-        // ========================================
-        // DATA VALIDATION HELPERS
-        // ========================================
+        // Note: Validators and Sanitizers loaded from validators.js
+        // Note: Performance utilities loaded from performance.js
         
-        const Validators = {
-            email: (email) => {
-                const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                return regex.test(email);
-            },
-            
-            phone: (phone) => {
-                // Remove all non-digits
-                const digits = phone.replace(/\D/g, '');
-                // Valid if 10-15 digits
-                return digits.length >= 10 && digits.length <= 15;
-            },
-            
-            url: (url) => {
-                try {
-                    new URL(url);
-                    return true;
-                } catch {
-                    return false;
-                }
-            },
-            
-            positiveNumber: (num) => {
-                const n = parseFloat(num);
-                return !isNaN(n) && n >= 0;
-            },
-            
-            dateRange: (start, end) => {
-                if (!start || !end) return true; // Allow empty
-                return new Date(end) >= new Date(start);
-            },
-            
-            notEmpty: (str) => {
-                return str && str.trim().length > 0;
-            },
-            
-            maxLength: (str, max) => {
-                return !str || str.length <= max;
-            }
-        };
-        
-        const Sanitizers = {
-            text: (str) => {
-                if (!str) return '';
-                // Remove HTML tags and trim
-                return str.replace(/<[^>]*>/g, '').trim();
-            },
-            
-            number: (num) => {
-                const n = parseFloat(num);
-                return isNaN(n) ? 0 : n;
-            },
-            
-            positiveNumber: (num) => {
-                const n = parseFloat(num);
-                return isNaN(n) || n < 0 ? 0 : n;
-            },
-            
-            email: (email) => {
-                return email.toLowerCase().trim();
-            },
-            
-            phone: (phone) => {
-                // Keep only digits, +, -, (), and spaces
-                return phone.replace(/[^\d\s\+\-\(\)]/g, '');
-            }
-        };
-        
-        window.Validators = Validators;
-        window.Sanitizers = Sanitizers;
-        
-        // ========================================
-        // END DATA VALIDATION HELPERS
-        // ========================================
-        
-        // ========================================
-        // PERFORMANCE OPTIMIZATIONS
-        // ========================================
-        
-        // Debounce helper - prevents too many function calls
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-        
-        // Throttle helper - limits function calls to once per interval
-        function throttle(func, limit) {
-            let inThrottle;
-            return function(...args) {
-                if (!inThrottle) {
-                    func.apply(this, args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, limit);
-                }
-            };
-        }
-        
-        // Debounced save - waits 1 second after last change before saving
+        // Create debounced functions using imported utilities
         const debouncedSave = debounce(() => {
             saveData();
         }, 1000);
         
-        // Debounced search - waits 300ms after last keystroke
         const debouncedSearch = debounce(() => {
             performGlobalSearch();
         }, 300);
         
-        // Throttled scroll handler - runs max once per 100ms
-        const throttledScroll = throttle((handler) => {
-            if (typeof handler === 'function') handler();
-        }, 100);
-        
-        window.debounce = debounce;
-        window.throttle = throttle;
         window.debouncedSave = debouncedSave;
         window.debouncedSearch = debouncedSearch;
-        
-        // ========================================
-        // END PERFORMANCE OPTIMIZATIONS
-        // ========================================
-        
-        // ========================================
-        // PERFORMANCE MONITORING
-        // ========================================
-        
-        const PerformanceMonitor = {
-            marks: {},
-            
-            start(label) {
-                this.marks[label] = performance.now();
-            },
-            
-            end(label) {
-                if (!this.marks[label]) return;
-                const duration = performance.now() - this.marks[label];
-                console.log(`⏱️ ${label}: ${duration.toFixed(2)}ms`);
-                delete this.marks[label];
-                return duration;
-            },
-            
-            measure(label, fn) {
-                this.start(label);
-                const result = fn();
-                this.end(label);
-                return result;
-            },
-            
-            async measureAsync(label, fn) {
-                this.start(label);
-                const result = await fn();
-                this.end(label);
-                return result;
-            }
-        };
-        
-        window.PerformanceMonitor = PerformanceMonitor;
-        
-        // ========================================
-        // END PERFORMANCE MONITORING
-        // ========================================
         
         // ========================================
         // END KEYBOARD SHORTCUTS & SEARCH
@@ -2117,16 +1960,6 @@
         function saveDataSync() {
             debouncedSave();
         }
-        
-        // Debounced version for rapid input changes (e.g., typing)
-        const debouncedSave = debounce(async () => {
-            try {
-                await saveData();
-            } catch (err) {
-                console.error('Save error:', err);
-                showErrorToast('Failed to save data');
-            }
-        }, 500); // 500ms debounce for typing
         
         async function saveData() {
             // Skip save in guest mode

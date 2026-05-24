@@ -748,8 +748,6 @@
         let currentPage = 'overview'; // Track current page/tab
         let realtimeChannels = []; // Store active subscriptions
         let isLocalUpdate = false; // Track our own saves to prevent reload loops
-        let lastReloadTime = 0; // Prevent rapid reload loops
-        const RELOAD_DEBOUNCE_MS = 2000; // Min time between reloads
         
         // ========================================
         // OFFLINE MODE SUPPORT
@@ -2298,28 +2296,75 @@
                 return;
             }
             
-            // ANTI-LOOP PROTECTION: Prevent rapid successive reloads
-            const now = Date.now();
-            if (now - lastReloadTime < RELOAD_DEBOUNCE_MS) {
-                console.log('🟡 REALTIME: Too soon since last reload, skipping to prevent loop');
-                return;
-            }
-            lastReloadTime = now;
-            
-            // Debounce rapid changes from same user
+            // Debounce rapid changes - NO anti-loop needed if we don't blink!
             clearTimeout(window.reloadTimer);
             window.reloadTimer = setTimeout(async () => {
+                // Store current scroll position
+                const scrollPos = window.scrollY;
+                
+                // Store focused element
+                const activeElement = document.activeElement;
+                const activeId = activeElement?.id;
+                const activeValue = activeElement?.value;
+                const activeSelectionStart = activeElement?.selectionStart;
+                
+                // Load new data SILENTLY
                 await loadData();
                 
-                // Re-render based on current page
-                renderAll();
+                // SMOOTH UPDATE: Only re-render the CURRENT page, not everything
+                switch(currentPage) {
+                    case 'overview':
+                        updateOverviewSummary();
+                        renderDayPlans();
+                        break;
+                    case 'budget':
+                        renderBudgetTable();
+                        renderSavingsTable();
+                        updateAllStats();
+                        break;
+                    case 'itinerary':
+                        renderDayPlans();
+                        break;
+                    case 'destinations':
+                        renderDestinations();
+                        break;
+                    case 'bookings':
+                        renderBookings();
+                        break;
+                    case 'packing':
+                        renderPackingList();
+                        break;
+                    case 'group':
+                        renderGroupMembers();
+                        updateGroupStats();
+                        renderEmergencyContacts();
+                        renderImportantInfo();
+                        break;
+                    case 'todos':
+                        renderTodos();
+                        renderSharedChecklist();
+                        break;
+                }
                 
-                // Ensure current page stays active
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                document.getElementById(currentPage).classList.add('active');
+                // Restore scroll position (NO JUMP)
+                window.scrollTo(0, scrollPos);
                 
-                console.log('✅ Data reloaded, staying on page:', currentPage);
-            }, 800); // 800ms debounce - wait for multiple changes
+                // Restore focus and cursor position (NO FOCUS LOSS)
+                if (activeId) {
+                    const elem = document.getElementById(activeId);
+                    if (elem) {
+                        elem.focus();
+                        if (activeValue !== undefined && elem.value !== activeValue) {
+                            // Don't overwrite if user is typing
+                            console.log('🟡 User is typing, not restoring old value');
+                        } else if (activeSelectionStart !== undefined) {
+                            elem.setSelectionRange(activeSelectionStart, activeSelectionStart);
+                        }
+                    }
+                }
+                
+                console.log('✅ Data reloaded SMOOTHLY (no blink), page:', currentPage);
+            }, 300); // Reduced to 300ms - faster sync, no blink!
         }
         
         function showLiveUpdateIndicator() {

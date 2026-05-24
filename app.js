@@ -1099,7 +1099,26 @@
         window.showGlobalSearch = showGlobalSearch;
         window.performGlobalSearch = performGlobalSearch;
         
-
+        // ========================================
+        // LOADING SKELETONS
+        // ========================================
+        
+        // SKELETON SCREENS DISABLED
+        // Problem: page.innerHTML = skeletonHTML replaces ALL content including form inputs
+        // This makes getElementById return null during load, breaking data population
+        function showLoadingSkeletons() {
+            // Disabled - caused DOM elements to be inaccessible
+        }
+        
+        function hideLoadingSkeletons() {
+            // Disabled - no longer needed
+        }
+        
+        window.hideLoadingSkeletons = hideLoadingSkeletons;
+        
+        // ========================================
+        // END LOADING SKELETONS
+        // ========================================
         
         // ========================================
         // END KEYBOARD SHORTCUTS & SEARCH
@@ -1525,6 +1544,10 @@
 
             renderAll();
             updateAllStats();
+            
+            // Remove loading indicator
+            const loadingBar = document.getElementById('app-loading');
+            if (loadingBar) loadingBar.remove();
             
             // Restore last viewed page
             const savedPage = localStorage.getItem('currentPage');
@@ -7530,8 +7553,31 @@
                 }
             }
             
+            // Simple loading indicator (doesn't replace DOM)
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.id = 'app-loading';
+            loadingIndicator.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0;
+                height: 3px; background: linear-gradient(90deg, #6366f1, #8b5cf6);
+                z-index: 9999; animation: loading 1.5s ease-in-out infinite;
+            `;
+            document.body.appendChild(loadingIndicator);
             
-            try {
+            // Add keyframe animation
+            if (!document.getElementById('loading-style')) {
+                const style = document.createElement('style');
+                style.id = 'loading-style';
+                style.textContent = `
+                    @keyframes loading {
+                        0% { transform: translateX(-100%); }
+                        50% { transform: translateX(0%); }
+                        100% { transform: translateX(100%); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            try{
                 // Check for share link (guest mode)
                 const urlParams = new URLSearchParams(window.location.search);
                 const shareToken = urlParams.get('share');

@@ -36,49 +36,13 @@
         window.toggleNotifications = function() {};
         window.toggleQuickActions = function() {};
         
-        // Theme toggle - can be called immediately
+        // No theme toggle - dark mode only
         window.toggleTheme = function() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme') || 'dark';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            // Update button text and icon
-            const icon = document.getElementById('themeIcon');
-            const text = document.getElementById('themeText');
-            if (icon && text) {
-                if (newTheme === 'light') {
-                    icon.textContent = '☀️';
-                    text.textContent = 'Light Mode';
-                } else {
-                    icon.textContent = '🌙';
-                    text.textContent = 'Dark Mode';
-                }
-            }
+            console.log('Dark mode only - no theme toggle available');
         };
         
-        // Load saved theme on page load
-        (function() {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            
-            // Update button when page loads
-            setTimeout(() => {
-                const icon = document.getElementById('themeIcon');
-                const text = document.getElementById('themeText');
-                if (icon && text) {
-                    if (savedTheme === 'light') {
-                        icon.textContent = '☀️';
-                        text.textContent = 'Light Mode';
-                    } else {
-                        icon.textContent = '🌙';
-                        text.textContent = 'Dark Mode';
-                    }
-                }
-            }, 100);
-        })();
+        // Always dark mode
+        document.documentElement.setAttribute('data-theme', 'dark');
         
         console.log('✅ Stub functions defined, preventing undefined errors');
     </script>
@@ -184,10 +148,10 @@
         </div>
         
         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
-            <button class="btn" style="width: 100%; margin-bottom: 12px; background: var(--bg-hover); border: 1px solid var(--border);" onclick="toggleTheme()" id="themeToggle">
-                <span id="themeIcon">🌙</span> <span id="themeText">Dark Mode</span>
+            <button class="btn btn-danger" style="width: 100%; margin-bottom: 8px;" onclick="logout()">Logout</button>
+            <button class="btn" style="width: 100%; background: #7f1d1d; border: 1px solid #991b1b; color: #fecaca; font-size: 13px;" onclick="deleteAccount()">
+                Delete Account
             </button>
-            <button class="btn btn-danger" style="width: 100%;" onclick="logout()">Logout</button>
         </div>
     </aside>
 
@@ -1057,9 +1021,6 @@
             🌤️ Check Weather
         </div>
         <div style="border-top: 1px solid var(--border); margin: 8px 0;"></div>
-        <div class="quick-action" onclick="makeTripPublic(); toggleQuickActions();">
-            🌍 Share Trip as Template
-        </div>
         <div class="quick-action" onclick="generateShareLink(); toggleQuickActions();">
             📤 Share Read-Only Link
         </div>
@@ -1068,6 +1029,10 @@
         </div>
         <div class="quick-action" onclick="importData(); toggleQuickActions();">
             📥 Import Backup
+        </div>
+        <div style="border-top: 1px solid var(--border); margin: 8px 0;"></div>
+        <div class="quick-action" onclick="deleteAccount(); toggleQuickActions();" style="color: #ef4444;">
+            🗑️ Delete Account
         </div>
     </div>
 

@@ -2196,6 +2196,51 @@
             }, 1500);
         }
 
+        // GRANULAR UPDATE: Update only specific data that changed
+        function updateSpecificDataType(dataType, newData) {
+            if (!newData) return;
+            
+            console.log('📦 GRANULAR UPDATE:', dataType);
+            
+            // Update the specific data in tripData
+            switch(dataType) {
+                case 'destinations':
+                    tripData.destinations = newData;
+                    if (currentPage === 'destinations' || currentPage === 'overview') {
+                        renderDestinations();
+                    }
+                    break;
+                    
+                case 'itinerary':
+                    tripData.dayPlans = newData;
+                    if (currentPage === 'itinerary' || currentPage === 'overview') {
+                        renderDayPlans();
+                    }
+                    break;
+                    
+                case 'bookings':
+                    tripData.bookings = newData;
+                    if (currentPage === 'bookings' || currentPage === 'overview') {
+                        renderBookings();
+                    }
+                    break;
+                    
+                case 'shared_checklist':
+                    tripData.sharedChecklist = newData;
+                    if (currentPage === 'todos' || currentPage === 'overview') {
+                        renderSharedChecklist();
+                    }
+                    break;
+                    
+                case 'emergency_contacts':
+                    // This is in trips table, will be handled by trips channel
+                    break;
+                    
+                default:
+                    console.log('Unknown data type:', dataType);
+            }
+        }
+
         // REAL-TIME SUBSCRIPTIONS
         function setupRealtime() {
             // Clean up old subscriptions
@@ -2219,7 +2264,27 @@
                     }
                     console.log('🔴 REALTIME: Trips changed by another user', payload);
                     showLiveUpdateIndicator();
-                    reloadDataPreservingPage();
+                    
+                    // GRANULAR UPDATE: Update only trip overview fields
+                    if (payload.new) {
+                        tripData.overview.destination = payload.new.destination || '';
+                        tripData.overview.departureDate = payload.new.departure_date || '';
+                        tripData.overview.returnDate = payload.new.return_date || '';
+                        
+                        // Update only the input fields (no re-render)
+                        const destEl = document.getElementById('destination');
+                        const depEl = document.getElementById('departureDate');
+                        const retEl = document.getElementById('returnDate');
+                        
+                        if (destEl && destEl !== document.activeElement) destEl.value = tripData.overview.destination;
+                        if (depEl && depEl !== document.activeElement) depEl.value = tripData.overview.departureDate;
+                        if (retEl && retEl !== document.activeElement) retEl.value = tripData.overview.returnDate;
+                        
+                        // Update summary if on overview page
+                        if (currentPage === 'overview') {
+                            updateOverviewSummary();
+                        }
+                    }
                 })
                 .subscribe();
             
@@ -2243,9 +2308,18 @@
                         console.log('🟡 REALTIME: Skipping - we were last editor');
                         return;
                     }
+                    
                     console.log('🔴 REALTIME: Shared data changed by another user', payload);
                     showLiveUpdateIndicator();
-                    reloadDataPreservingPage();
+                    
+                    // GRANULAR UPDATE: Only update the specific data type that changed
+                    const dataType = payload.new?.data_type || payload.old?.data_type;
+                    if (dataType) {
+                        updateSpecificDataType(dataType, payload.new?.data);
+                    } else {
+                        // Fallback to full reload if we can't determine type
+                        reloadDataPreservingPage();
+                    }
                 })
                 .subscribe();
             

@@ -1021,22 +1021,56 @@
         function showGlobalSearch() {
             showModal(`
                 <div class="modal-header">
-                    <div class="modal-title">🔍 Search Trip</div>
+                    <div class="modal-title">🔍 Search & Filter</div>
                     <button class="modal-close" onclick="closeModal()">×</button>
                 </div>
                 <div class="modal-body">
                     <input type="text" id="globalSearchInput" placeholder="Search destinations, bookings, notes, activities..." 
                            style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; 
-                                  background: var(--bg-main); color: var(--text-primary); font-size: 14px; margin-bottom: 16px;"
-                           oninput="performGlobalSearch(this.value)" autofocus>
+                                  background: var(--bg-main); color: var(--text-primary); font-size: 14px; margin-bottom: 12px;"
+                           oninput="performGlobalSearch()" autofocus>
+                    
+                    <!-- Advanced Filters -->
+                    <details style="margin-bottom: 16px;">
+                        <summary style="cursor: pointer; padding: 8px; background: var(--bg-hover); border-radius: 8px; color: var(--text-secondary); font-size: 13px;">🎛️ Advanced Filters</summary>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; padding: 12px; background: var(--bg-hover); border-radius: 8px;">
+                            <div>
+                                <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Type</label>
+                                <select id="filterType" onchange="performGlobalSearch()" style="width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-main); color: var(--text-primary); font-size: 12px;">
+                                    <option value="all">All</option>
+                                    <option value="destination">Destinations</option>
+                                    <option value="booking">Bookings</option>
+                                    <option value="activity">Activities</option>
+                                    <option value="packing">Packing</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; align-items: flex-end;">
+                                <button onclick="clearSearchFilters()" style="width: 100%; padding: 6px; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); border-radius: 6px; cursor: pointer; font-size: 12px;">Clear</button>
+                            </div>
+                        </div>
+                    </details>
+                    
                     <div id="searchResults" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
             `);
+            performGlobalSearch(); // Initial search
         }
         
-        function performGlobalSearch(query) {
+        function clearSearchFilters() {
+            document.getElementById('globalSearchInput').value = '';
+            document.getElementById('filterType').value = 'all';
+            performGlobalSearch();
+        }
+        
+        function performGlobalSearch() {
+            const query = document.getElementById('globalSearchInput')?.value || '';
+            const filterType = document.getElementById('filterType')?.value || 'all';
+            
             if (!query || query.length < 2) {
-                document.getElementById('searchResults').innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Type to search...</p>';
+                const resultsDiv = document.getElementById('searchResults');
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Type at least 2 characters to search...</p>';
+                }
                 return;
             }
             
@@ -1044,60 +1078,76 @@
             const lowerQuery = query.toLowerCase();
             
             // Search destinations
-            ['main', 'optional', 'other', 'restaurants'].forEach(type => {
-                (tripData.destinations[type] || []).forEach((dest, idx) => {
-                    if (dest.name?.toLowerCase().includes(lowerQuery) || dest.address?.toLowerCase().includes(lowerQuery)) {
-                        results.push({ type: 'Destination', name: dest.name, page: 'destinations', icon: '📍' });
-                    }
+            if (filterType === 'all' || filterType === 'destination') {
+                ['main', 'optional', 'other', 'restaurants'].forEach(type => {
+                    (tripData.destinations[type] || []).forEach((dest, idx) => {
+                        if (dest.name?.toLowerCase().includes(lowerQuery) || dest.address?.toLowerCase().includes(lowerQuery)) {
+                            results.push({ type: 'Destination', name: dest.name, page: 'destinations', icon: '📍', category: type });
+                        }
+                    });
                 });
-            });
+            }
             
             // Search bookings
-            (tripData.bookings || []).forEach(booking => {
-                if (booking.type?.toLowerCase().includes(lowerQuery) || booking.name?.toLowerCase().includes(lowerQuery)) {
-                    results.push({ type: 'Booking', name: `${booking.type}: ${booking.name}`, page: 'bookings', icon: '🎫' });
-                }
-            });
-            
-            // Search itinerary
-            (tripData.dayPlans || []).forEach((day, idx) => {
-                if (day.city?.toLowerCase().includes(lowerQuery)) {
-                    results.push({ type: 'Itinerary', name: `Day ${idx + 1} - ${day.city}`, page: 'itinerary', icon: '📅' });
-                }
-                if (day.collaborativeNotes?.toLowerCase().includes(lowerQuery)) {
-                    results.push({ type: 'Note', name: `Day ${idx + 1} notes`, page: 'itinerary', icon: '💬' });
-                }
-                (day.activities || []).forEach(act => {
-                    if (act.activity?.toLowerCase().includes(lowerQuery)) {
-                        results.push({ type: 'Activity', name: act.activity, page: 'itinerary', icon: '⚡' });
+            if (filterType === 'all' || filterType === 'booking') {
+                (tripData.bookings || []).forEach(booking => {
+                    if (booking.type?.toLowerCase().includes(lowerQuery) || booking.name?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Booking', name: `${booking.type}: ${booking.name}`, page: 'bookings', icon: '🎫', status: booking.status || 'pending' });
                     }
                 });
-            });
+            }
+            
+            // Search itinerary/activities
+            if (filterType === 'all' || filterType === 'activity') {
+                (tripData.dayPlans || []).forEach((day, idx) => {
+                    if (day.city?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Itinerary', name: `Day ${idx + 1} - ${day.city}`, page: 'itinerary', icon: '📅' });
+                    }
+                    if (day.collaborativeNotes?.toLowerCase().includes(lowerQuery)) {
+                        results.push({ type: 'Note', name: `Day ${idx + 1} notes`, page: 'itinerary', icon: '💬' });
+                    }
+                    (day.activities || []).forEach(act => {
+                        if (act.activity?.toLowerCase().includes(lowerQuery)) {
+                            results.push({ type: 'Activity', name: act.activity, page: 'itinerary', icon: '⚡' });
+                        }
+                    });
+                });
+            }
             
             // Search packing
-            (tripData.packing || []).forEach(cat => {
-                cat.items.forEach(item => {
-                    if (item.name?.toLowerCase().includes(lowerQuery)) {
-                        results.push({ type: 'Packing', name: item.name, page: 'packing', icon: '🎒' });
-                    }
+            if (filterType === 'all' || filterType === 'packing') {
+                (tripData.packing || []).forEach(cat => {
+                    cat.items.forEach(item => {
+                        if (item.name?.toLowerCase().includes(lowerQuery)) {
+                            results.push({ type: 'Packing', name: item.name, page: 'packing', icon: '🎒', packed: item.packed });
+                        }
+                    });
                 });
-            });
+            }
             
-            // Display results
-            const resultsHTML = results.length > 0 ? results.map(r => `
-                <div onclick="showPage('${r.page}'); closeModal();" style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
-                     onmouseover="this.style.background='var(--primary)'; this.style.color='white'" 
-                     onmouseout="this.style.background='var(--bg-hover)'; this.style.color='var(--text-primary)'">
-                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">${r.icon} ${r.type}</div>
-                    <div style="font-weight: 600;">${r.name}</div>
-                </div>
-            `).join('') : '<p style="color: var(--text-secondary); text-align: center; padding: 40px;">No results found</p>';
-            
-            document.getElementById('searchResults').innerHTML = resultsHTML;
+            // Display results with count
+            const resultsDiv = document.getElementById('searchResults');
+            if (resultsDiv) {
+                if (results.length > 0) {
+                    const countText = `<div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; padding: 8px; background: var(--bg-hover); border-radius: 6px;">Found ${results.length} result${results.length > 1 ? 's' : ''}</div>`;
+                    const resultsHTML = results.map(r => `
+                        <div onclick="showPage('${r.page}'); closeModal();" style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
+                             onmouseover="this.style.background='var(--primary)'; this.style.color='white'" 
+                             onmouseout="this.style.background='var(--bg-hover)'; this.style.color='var(--text-primary)'">
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">${r.icon} ${r.type}</div>
+                            <div style="font-weight: 600;">${r.name}</div>
+                        </div>
+                    `).join('');
+                    resultsDiv.innerHTML = countText + resultsHTML;
+                } else {
+                    resultsDiv.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 40px;">No results found. Try different keywords or clear filters.</p>';
+                }
+            }
         }
         
         window.showGlobalSearch = showGlobalSearch;
         window.performGlobalSearch = performGlobalSearch;
+        window.clearSearchFilters = clearSearchFilters;
         
         // ========================================
         // LOADING SKELETONS
@@ -1118,6 +1168,375 @@
         
         // ========================================
         // END LOADING SKELETONS
+        // ========================================
+        
+        // ========================================
+        // ONBOARDING TUTORIAL
+        // ========================================
+        
+        let currentOnboardingStep = 0;
+        const onboardingSteps = [
+            {
+                title: "🎉 Welcome to Trip Planner!",
+                content: "Plan your perfect trip with friends. Track budget, create itineraries, and collaborate in real-time.",
+                icon: "🏖️"
+            },
+            {
+                title: "📍 Add Your Destinations",
+                content: "Click 'Destinations' in the sidebar to add places you want to visit. We'll help you organize them into a perfect itinerary.",
+                icon: "🗺️"
+            },
+            {
+                title: "💰 Set Your Budget",
+                content: "Track expenses by category. We'll show you real-time spending and alert you if you're over budget.",
+                icon: "💵"
+            },
+            {
+                title: "👥 Invite Your Travel Buddies",
+                content: "Click 'Group' to invite friends. Everyone can add items, vote on activities, and stay synced.",
+                icon: "👫"
+            },
+            {
+                title: "✅ You're All Set!",
+                content: "Start planning your adventure. Need help? Click the '?' icon anytime.",
+                icon: "🚀"
+            }
+        ];
+        
+        function showOnboarding() {
+            currentOnboardingStep = 0;
+            document.getElementById('onboardingOverlay').style.display = 'block';
+            renderOnboardingStep();
+        }
+        
+        function renderOnboardingStep() {
+            const step = onboardingSteps[currentOnboardingStep];
+            const content = document.getElementById('onboardingContent');
+            const progress = document.getElementById('onboardingProgress');
+            const nextBtn = document.getElementById('onboardingNext');
+            
+            content.innerHTML = `
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="font-size: 64px; margin-bottom: 16px;">${step.icon}</div>
+                    <h2 style="font-size: 24px; margin-bottom: 12px; color: var(--text-primary);">${step.title}</h2>
+                    <p style="font-size: 16px; color: var(--text-secondary); line-height: 1.6;">${step.content}</p>
+                </div>
+            `;
+            
+            // Progress dots
+            progress.innerHTML = onboardingSteps.map((_, idx) => `
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: ${idx === currentOnboardingStep ? 'var(--primary)' : 'var(--border)'}; transition: all 0.3s;"></div>
+            `).join('');
+            
+            // Update button text on last step
+            if (currentOnboardingStep === onboardingSteps.length - 1) {
+                nextBtn.textContent = 'Get Started';
+                nextBtn.onclick = finishOnboarding;
+            } else {
+                nextBtn.textContent = 'Next';
+                nextBtn.onclick = nextOnboardingStep;
+            }
+        }
+        
+        function nextOnboardingStep() {
+            if (currentOnboardingStep < onboardingSteps.length - 1) {
+                currentOnboardingStep++;
+                renderOnboardingStep();
+            } else {
+                finishOnboarding();
+            }
+        }
+        
+        function skipOnboarding() {
+            finishOnboarding();
+        }
+        
+        function finishOnboarding() {
+            document.getElementById('onboardingOverlay').style.display = 'none';
+            localStorage.setItem('onboarding_completed', 'true');
+            console.log('✅ Onboarding completed');
+        }
+        
+        window.showOnboarding = showOnboarding;
+        window.nextOnboardingStep = nextOnboardingStep;
+        window.skipOnboarding = skipOnboarding;
+        
+        // ========================================
+        // END ONBOARDING TUTORIAL
+        // ========================================
+        
+        // ========================================
+        // SMART NOTIFICATIONS
+        // ========================================
+        
+        async function createNotification(type, title, message, data = {}) {
+            try {
+                await sb.from('notifications').insert({
+                    trip_id: currentTrip,
+                    user_id: user.id,
+                    type: type,
+                    title: title,
+                    message: message,
+                    data: data,
+                    read: false
+                });
+                loadNotifications(); // Refresh notification list
+            } catch (error) {
+                console.error('Failed to create notification:', error);
+            }
+        }
+        
+        async function checkSmartNotifications() {
+            if (!currentTrip || !user) return;
+            
+            const now = new Date();
+            const tripStart = new Date(tripData.overview.departureDate);
+            const tripEnd = new Date(tripData.overview.returnDate);
+            const daysUntilTrip = Math.ceil((tripStart - now) / (1000 * 60 * 60 * 24));
+            
+            // 1. BOOKING REMINDERS (24h before)
+            (tripData.bookings || []).forEach(booking => {
+                if (booking.datetime) {
+                    const bookingTime = new Date(booking.datetime);
+                    const hoursUntil = (bookingTime - now) / (1000 * 60 * 60);
+                    
+                    if (hoursUntil > 23 && hoursUntil < 25) {
+                        createNotification(
+                            'booking_reminder',
+                            '✈️ Booking Reminder',
+                            `${booking.type} in 24 hours: ${booking.name}`,
+                            { bookingId: booking.id }
+                        );
+                    }
+                }
+            });
+            
+            // 2. BUDGET ALERTS (70% spent)
+            const totalBudget = (tripData.budget || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const totalSpent = (tripData.budget || []).filter(item => item.paid).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const budgetPercent = totalBudget > 0 ? (totalSpent / totalBudget) : 0;
+            
+            if (budgetPercent > 0.7 && budgetPercent < 0.75) {
+                const remaining = daysUntilTrip > 0 ? daysUntilTrip : Math.ceil((tripEnd - now) / (1000 * 60 * 60 * 24));
+                createNotification(
+                    'budget_alert',
+                    '💸 Budget Warning',
+                    `You've spent ${Math.round(budgetPercent * 100)}% of your budget with ${remaining} days left`,
+                    { budgetPercent, remaining }
+                );
+            }
+            
+            // 3. PACKING REMINDERS (3 days before)
+            if (daysUntilTrip === 3) {
+                const packedCount = (tripData.packing || []).reduce((sum, cat) => 
+                    sum + cat.items.filter(i => i.packed).length, 0
+                );
+                const totalItems = (tripData.packing || []).reduce((sum, cat) => 
+                    sum + cat.items.length, 0
+                );
+                
+                if (packedCount < totalItems) {
+                    createNotification(
+                        'packing_reminder',
+                        '🧳 Start Packing',
+                        `Trip in 3 days! You've packed ${packedCount} of ${totalItems} items`,
+                        { packedCount, totalItems }
+                    );
+                }
+            }
+            
+            // 4. TRIP STARTING SOON (1 day before)
+            if (daysUntilTrip === 1) {
+                createNotification(
+                    'trip_starting',
+                    '🎉 Trip Tomorrow!',
+                    `Your trip to ${tripData.overview.destination} starts tomorrow!`,
+                    {}
+                );
+            }
+            
+            // 5. UNPAID BOOKINGS REMINDER (7 days before)
+            if (daysUntilTrip === 7) {
+                const unpaidBookings = (tripData.bookings || []).filter(b => b.status !== 'paid' && b.status !== 'confirmed');
+                if (unpaidBookings.length > 0) {
+                    createNotification(
+                        'unpaid_booking',
+                        '⚠️ Unpaid Bookings',
+                        `You have ${unpaidBookings.length} unpaid booking${unpaidBookings.length > 1 ? 's' : ''} - trip in 7 days!`,
+                        { count: unpaidBookings.length }
+                    );
+                }
+            }
+        }
+        
+        window.checkSmartNotifications = checkSmartNotifications;
+        window.createNotification = createNotification;
+        
+        // ========================================
+        // END SMART NOTIFICATIONS
+        // ========================================
+        
+        // ========================================
+        // TRIP SHARING & TEMPLATES
+        // ========================================
+        
+        async function makeTrip Public() {
+            const response = await showModal(`
+                <div class="modal-header">
+                    <div class="modal-title">🌍 Share Your Trip</div>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Template Name</label>
+                        <input type="text" id="templateName" value="${tripData.overview.destination} Trip" 
+                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-main); color: var(--text-primary);">
+                    </div>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Description</label>
+                        <textarea id="templateDesc" rows="3" placeholder="Tell others about your amazing trip..." 
+                                  style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-main); color: var(--text-primary);">
+                        </textarea>
+                    </div>
+                    
+                    <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                        <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Share Options:</div>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+                            <input type="checkbox" id="shareItinerary" checked>
+                            <span>Share itinerary and day plans</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+                            <input type="checkbox" id="shareDestinations" checked>
+                            <span>Share destinations list</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="shareBudget">
+                            <span>Share budget categories (amounts hidden)</span>
+                        </label>
+                    </div>
+                    
+                    <div style="background: #fef3c7; color: #92400e; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;">
+                        ⚠️ Your trip will be visible to all users. Personal information like names and specific bookings won't be shared.
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px;">
+                        <button onclick="closeModal()" style="flex: 1; padding: 12px; background: transparent; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--text-secondary);">
+                            Cancel
+                        </button>
+                        <button onclick="confirmMakeTripPublic()" style="flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            Make Public
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+        
+        async function confirmMakeTripPublic() {
+            const name = document.getElementById('templateName').value;
+            const description = document.getElementById('templateDesc').value;
+            const shareItinerary = document.getElementById('shareItinerary').checked;
+            const shareDestinations = document.getElementById('shareDestinations').checked;
+            const shareBudget = document.getElementById('shareBudget').checked;
+            
+            if (!name.trim()) {
+                alert('Please enter a template name');
+                return;
+            }
+            
+            try {
+                const { error } = await sb
+                    .from('trips')
+                    .update({
+                        is_public: true,
+                        template_name: name,
+                        template_description: description,
+                        template_tags: [tripData.overview.destination?.split(' ')[0] || 'Travel']
+                    })
+                    .eq('id', currentTrip);
+                
+                if (error) throw error;
+                
+                closeModal();
+                showSuccessToast('🎉 Trip is now public! Others can find and clone it.');
+                
+                // Add option to view in browse page
+                setTimeout(() => {
+                    if (confirm('View your trip in Browse Templates?')) {
+                        window.open(`browse.html?search=${encodeURIComponent(name)}`, '_blank');
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error making trip public:', error);
+                alert('Failed to make trip public: ' + error.message);
+            }
+        }
+        
+        async function cloneTrip(templateId) {
+            if (!confirm('Clone this trip? This will create a new trip based on this template.')) {
+                return;
+            }
+            
+            try {
+                // Get template data
+                const { data: template, error: fetchError } = await sb
+                    .from('trips')
+                    .select('*, shared_trip_data(*)')
+                    .eq('id', templateId)
+                    .single();
+                
+                if (fetchError) throw fetchError;
+                
+                // Create new trip
+                const { data: newTrip, error: createError } = await sb
+                    .from('trips')
+                    .insert({
+                        owner_id: user.id,
+                        destination: template.destination,
+                        departure_date: null,
+                        return_date: null,
+                        is_public: false
+                    })
+                    .select()
+                    .single();
+                
+                if (createError) throw createError;
+                
+                // Copy shared data (simplified - just copy destinations)
+                const destinationsData = template.shared_trip_data?.find(d => d.data_type === 'destinations');
+                if (destinationsData) {
+                    await sb.from('shared_trip_data').insert({
+                        trip_id: newTrip.id,
+                        data_type: 'destinations',
+                        data: destinationsData.data
+                    });
+                }
+                
+                // Increment clone count
+                await sb
+                    .from('trips')
+                    .update({ clone_count: (template.clone_count || 0) + 1 })
+                    .eq('id', templateId);
+                
+                // Navigate to new trip
+                showSuccessToast('Trip cloned! Redirecting...');
+                setTimeout(() => {
+                    window.location.href = `app.html?trip=${newTrip.id}`;
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error cloning trip:', error);
+                alert('Failed to clone trip: ' + error.message);
+            }
+        }
+        
+        window.makeTripPublic = makeTripPublic;
+        window.confirmMakeTripPublic = confirmMakeTripPublic;
+        window.cloneTrip = cloneTrip;
+        
+        // ========================================
+        // END TRIP SHARING & TEMPLATES
         // ========================================
         
         // ========================================
@@ -1544,6 +1963,9 @@
 
             renderAll();
             updateAllStats();
+            
+            // Check for smart notifications
+            setTimeout(() => checkSmartNotifications(), 2000); // Check 2s after load
             
             // Remove loading indicator
             const loadingBar = document.getElementById('app-loading');
@@ -6436,8 +6858,31 @@
                     attribution: '© OpenStreetMap',
                     maxZoom: 19
                 }).addTo(map);
+                
+                // Initialize marker cluster group
+                window.markers = L.markerClusterGroup({
+                    chunkedLoading: true,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: false,
+                    zoomToBoundsOnClick: true
+                });
+                map.addLayer(window.markers);
 
                 window.mapInitialized = true;
+            }
+            
+            // Load marker cluster plugin if not loaded
+            if (typeof L.markerClusterGroup === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
+                script.onload = () => {
+                    console.log('✅ Marker clustering loaded');
+                    if (map && !window.markers) {
+                        window.markers = L.markerClusterGroup();
+                        map.addLayer(window.markers);
+                    }
+                };
+                document.head.appendChild(script);
             }
             
             // Populate selectors
@@ -6916,9 +7361,20 @@
             const showAccommodation = document.getElementById('showAccommodation').checked;
             const showRouteLines = document.getElementById('showRouteLines')?.checked || false;
             
-            // Clear existing markers and lines
+            // Clear existing markers (use cluster group if available)
+            if (window.markers) {
+                window.markers.clearLayers();
+            } else {
+                map.eachLayer(layer => {
+                    if (layer instanceof L.Marker) {
+                        map.removeLayer(layer);
+                    }
+                });
+            }
+            
+            // Clear existing polylines
             map.eachLayer(layer => {
-                if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                if (layer instanceof L.Polyline) {
                     map.removeLayer(layer);
                 }
             });
@@ -6927,7 +7383,7 @@
             routeLines.forEach(line => map.removeLayer(line));
             routeLines = [];
             
-            const markers = [];
+            const markersList = [];
             const allCoords = {};
             let visibleCount = 0;
             
@@ -6992,7 +7448,14 @@
                                         className: 'custom-marker',
                                         iconSize: [35, 35]
                                     })
-                                }).addTo(map);
+                                });
+                                
+                                // Add to cluster group if available, otherwise add directly to map
+                                if (window.markers) {
+                                    window.markers.addLayer(marker);
+                                } else {
+                                    marker.addTo(map);
+                                }
                                 
                                 const locationKey = `${type}-${dest.city}-${dest.placeName}`;
                                 const displayName = dest.placeName || dest.city || 'Location';
@@ -7796,6 +8259,11 @@
             setupRealtime();
             
             console.log('✅ App initialized with real-time updates');
+            
+            // Show onboarding for first-time users
+            if (!localStorage.getItem('onboarding_completed')) {
+                setTimeout(() => showOnboarding(), 1000); // Delay 1s for smooth load
+            }
             
             } catch (initError) {
                 console.error('❌ Initialization error:', initError);

@@ -36,6 +36,50 @@
         window.toggleNotifications = function() {};
         window.toggleQuickActions = function() {};
         
+        // Theme toggle - can be called immediately
+        window.toggleTheme = function() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Update button text and icon
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            if (icon && text) {
+                if (newTheme === 'light') {
+                    icon.textContent = '☀️';
+                    text.textContent = 'Light Mode';
+                } else {
+                    icon.textContent = '🌙';
+                    text.textContent = 'Dark Mode';
+                }
+            }
+        };
+        
+        // Load saved theme on page load
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            // Update button when page loads
+            setTimeout(() => {
+                const icon = document.getElementById('themeIcon');
+                const text = document.getElementById('themeText');
+                if (icon && text) {
+                    if (savedTheme === 'light') {
+                        icon.textContent = '☀️';
+                        text.textContent = 'Light Mode';
+                    } else {
+                        icon.textContent = '🌙';
+                        text.textContent = 'Dark Mode';
+                    }
+                }
+            }, 100);
+        })();
+        
         console.log('✅ Stub functions defined, preventing undefined errors');
     </script>
     
@@ -44,6 +88,10 @@
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin="" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></noscript>
+    
+    <!-- Leaflet Marker Cluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
     
     <!-- External Stylesheet -->
     <link rel="stylesheet" href="styles/main.css">
@@ -136,6 +184,9 @@
         </div>
         
         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <button class="btn" style="width: 100%; margin-bottom: 12px; background: var(--bg-hover); border: 1px solid var(--border);" onclick="toggleTheme()" id="themeToggle">
+                <span id="themeIcon">🌙</span> <span id="themeText">Dark Mode</span>
+            </button>
             <button class="btn btn-danger" style="width: 100%;" onclick="logout()">Logout</button>
         </div>
     </aside>
@@ -1006,6 +1057,9 @@
             🌤️ Check Weather
         </div>
         <div style="border-top: 1px solid var(--border); margin: 8px 0;"></div>
+        <div class="quick-action" onclick="makeTripPublic(); toggleQuickActions();">
+            🌍 Share Trip as Template
+        </div>
         <div class="quick-action" onclick="generateShareLink(); toggleQuickActions();">
             📤 Share Read-Only Link
         </div>
@@ -1107,5 +1161,21 @@
         });
         initCache();
     </script>
+    
+    <!-- Onboarding Overlay -->
+    <div id="onboardingOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; backdrop-filter: blur(4px);">
+        <div id="onboardingModal" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-card); border-radius: 16px; padding: 40px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+            <div id="onboardingContent"></div>
+            <div style="margin-top: 32px; display: flex; justify-content: space-between; align-items: center;">
+                <div id="onboardingProgress" style="display: flex; gap: 8px;">
+                    <!-- Progress dots -->
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button onclick="skipOnboarding()" style="background: transparent; border: 1px solid var(--border); color: var(--text-secondary); padding: 10px 20px; border-radius: 8px; cursor: pointer;">Skip</button>
+                    <button onclick="nextOnboardingStep()" id="onboardingNext" style="background: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

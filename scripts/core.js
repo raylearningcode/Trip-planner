@@ -748,6 +748,8 @@
         let currentPage = 'overview'; // Track current page/tab
         let realtimeChannels = []; // Store active subscriptions
         let isLocalUpdate = false; // Track our own saves to prevent reload loops
+        let lastReloadTime = 0; // Prevent rapid reload loops
+        const RELOAD_DEBOUNCE_MS = 2000; // Min time between reloads
         
         // ========================================
         // OFFLINE MODE SUPPORT
@@ -2296,7 +2298,15 @@
                 return;
             }
             
-            // Debounce rapid changes
+            // ANTI-LOOP PROTECTION: Prevent rapid successive reloads
+            const now = Date.now();
+            if (now - lastReloadTime < RELOAD_DEBOUNCE_MS) {
+                console.log('🟡 REALTIME: Too soon since last reload, skipping to prevent loop');
+                return;
+            }
+            lastReloadTime = now;
+            
+            // Debounce rapid changes from same user
             clearTimeout(window.reloadTimer);
             window.reloadTimer = setTimeout(async () => {
                 await loadData();
@@ -5275,6 +5285,40 @@
             renderAll();
         }
 
+        async function leaveGroup() {
+            const confirmed = await customConfirm(
+                'Leave Group?',
+                '⚠️ Are you sure you want to leave this trip?\n\nYou will no longer have access to the trip data.',
+                'Leave Group',
+                'Cancel'
+            );
+            
+            if (!confirmed) return;
+            
+            try {
+                // Delete from trip_members table
+                const { error } = await sb
+                    .from('trip_members')
+                    .delete()
+                    .eq('trip_id', currentTrip)
+                    .eq('user_id', user.id);
+                
+                if (error) throw error;
+                
+                showSuccessToast('You left the group');
+                
+                // Redirect to home page after 1 second
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+            } catch (err) {
+                console.error('Leave error:', err);
+                showErrorToast('Error: ' + err.message);
+            }
+        }
+
+        window.leaveGroup = leaveGroup;
+
         function toggleMemberConfirm(idx) {
             tripData.group[idx].confirmed = !tripData.group[idx].confirmed;
             renderGroupMembers();
@@ -5625,6 +5669,11 @@
                             ${user ? `
                                 <button class="btn ${member.confirmed ? 'btn-secondary' : 'btn-success'} btn-sm" style="flex: 1; ${member.confirmed ? '' : 'background: linear-gradient(135deg, var(--success), #059669); border: none;'}" onclick="toggleMemberConfirm(${idx})">
                                     ${member.confirmed ? '✗ Unconfirm' : '✓ Confirm Attendance'}
+                                </button>
+                            ` : ''}
+                            ${!isOwner && user && member.user_id === user.id ? `
+                                <button class="btn btn-danger btn-sm" style="flex: 1;" onclick="leaveGroup()">
+                                    🚪 Leave Group
                                 </button>
                             ` : ''}
                             ${!isOwner && user ? `

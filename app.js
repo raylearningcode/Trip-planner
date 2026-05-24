@@ -1343,16 +1343,8 @@
         // ========================================
         
         async function deleteAccount() {
-            const confirmed = confirm('⚠️ DELETE ACCOUNT?\n\nThis will permanently delete:\n- Your account\n- All your trips\n- All your data\n\nThis action CANNOT be undone!\n\nType DELETE to confirm.');
-            
-            if (!confirmed) return;
-            
-            const verification = prompt('Type DELETE (all caps) to confirm account deletion:');
-            
-            if (verification !== 'DELETE') {
-                alert('Account deletion cancelled.');
-                return;
-            }
+            const shouldDelete = await showDeleteAccountModal();
+            if (!shouldDelete) return;
             
             try {
                 showLoadingToast('Deleting account...');
@@ -1409,12 +1401,12 @@
                 localStorage.clear();
                 sessionStorage.clear();
                 
-                alert('✅ Account deleted successfully. Goodbye!');
+                await customAlert('Account Deleted', 'Your account has been deleted successfully.\n\nGoodbye! 👋', 'success');
                 window.location.href = 'index.html';
                 
             } catch (error) {
                 console.error('Error deleting account:', error);
-                alert('Failed to delete account: ' + error.message + '\n\nPlease contact support.');
+                await customAlert('Error', 'Failed to delete account: ' + error.message + '\n\nPlease contact support.', 'error');
             }
         }
         
@@ -1541,6 +1533,151 @@
         function closeModal() {
             ModalManager.close();
         }
+        
+        // ========================================
+        // CUSTOM MODAL REPLACEMENTS FOR BROWSER POPUPS
+        // ========================================
+        
+        // Beautiful confirm dialog
+        function customConfirm(title, message, confirmText = 'Confirm', cancelText = 'Cancel') {
+            return new Promise((resolve) => {
+                showModal(`
+                    <div class="modal-header">
+                        <div class="modal-title" style="font-size: 24px;">⚠️ ${title}</div>
+                        <button class="modal-close" onclick="closeModal()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="font-size: 16px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 24px; white-space: pre-line;">${message}</p>
+                        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                            <button onclick="window.modalConfirmResolve(false); closeModal();" 
+                                    style="padding: 12px 24px; background: transparent; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--text-secondary); transition: all 0.2s;"
+                                    onmouseover="this.style.background='var(--bg-hover)'" 
+                                    onmouseout="this.style.background='transparent'">
+                                ${cancelText}
+                            </button>
+                            <button onclick="window.modalConfirmResolve(true); closeModal();" 
+                                    style="padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); transition: all 0.2s;"
+                                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(99, 102, 241, 0.4)'" 
+                                    onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 12px rgba(99, 102, 241, 0.3)'">
+                                ${confirmText}
+                            </button>
+                        </div>
+                    </div>
+                `);
+                window.modalConfirmResolve = resolve;
+            });
+        }
+        
+        // Beautiful prompt dialog
+        function customPrompt(title, message, defaultValue = '', placeholder = '') {
+            return new Promise((resolve) => {
+                showModal(`
+                    <div class="modal-header">
+                        <div class="modal-title" style="font-size: 24px;">✏️ ${title}</div>
+                        <button class="modal-close" onclick="closeModal()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">${message}</p>
+                        <input type="text" id="customPromptInput" value="${defaultValue}" placeholder="${placeholder}"
+                               style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; background: var(--bg-main); color: var(--text-primary); font-size: 16px; margin-bottom: 24px;"
+                               autofocus>
+                        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                            <button onclick="window.modalPromptResolve(null); closeModal();" 
+                                    style="padding: 12px 24px; background: transparent; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--text-secondary);">
+                                Cancel
+                            </button>
+                            <button onclick="window.modalPromptResolve(document.getElementById('customPromptInput').value); closeModal();" 
+                                    style="padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                `);
+                window.modalPromptResolve = resolve;
+                
+                // Allow Enter key to submit
+                setTimeout(() => {
+                    document.getElementById('customPromptInput').addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            window.modalPromptResolve(document.getElementById('customPromptInput').value);
+                            closeModal();
+                        }
+                    });
+                }, 100);
+            });
+        }
+        
+        // Beautiful alert dialog
+        function customAlert(title, message, type = 'info') {
+            return new Promise((resolve) => {
+                const icons = {
+                    info: '💡',
+                    success: '✅',
+                    warning: '⚠️',
+                    error: '❌'
+                };
+                const colors = {
+                    info: 'var(--primary)',
+                    success: '#10b981',
+                    warning: '#f59e0b',
+                    error: '#ef4444'
+                };
+                
+                showModal(`
+                    <div class="modal-header" style="border-bottom: 3px solid ${colors[type]};">
+                        <div class="modal-title" style="font-size: 24px;">${icons[type]} ${title}</div>
+                        <button class="modal-close" onclick="closeModal()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="font-size: 16px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 24px; white-space: pre-line;">${message}</p>
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button onclick="window.modalAlertResolve(); closeModal();" 
+                                    style="padding: 12px 32px; background: ${colors[type]}; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 12px ${colors[type]}40; transition: all 0.2s;"
+                                    onmouseover="this.style.transform='translateY(-2px)'" 
+                                    onmouseout="this.style.transform=''">
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                `);
+                window.modalAlertResolve = resolve;
+            });
+        }
+        
+        // Special: Delete Account Modal
+        async function showDeleteAccountModal() {
+            const confirmed = await customConfirm(
+                'Delete Account?',
+                'This will permanently delete:\n• Your account\n• All your trips\n• All your data\n\nThis action CANNOT be undone!',
+                'Continue',
+                'Cancel'
+            );
+            
+            if (!confirmed) return false;
+            
+            const verification = await customPrompt(
+                'Confirm Deletion',
+                'Type DELETE (all caps) to permanently delete your account:',
+                '',
+                'Type DELETE here'
+            );
+            
+            if (verification !== 'DELETE') {
+                await customAlert('Cancelled', 'Account deletion cancelled. Your data is safe.', 'info');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        window.customConfirm = customConfirm;
+        window.customPrompt = customPrompt;
+        window.customAlert = customAlert;
+        window.showDeleteAccountModal = showDeleteAccountModal;
+        
+        // ========================================
+        // END CUSTOM MODAL REPLACEMENTS
+        // ========================================
 
         // Handle file input cleanup
         document.addEventListener('change', function(e) {
@@ -4505,7 +4642,8 @@
         }
         
         async function deleteEmergencyContact(id) {
-            if (!confirm('Delete this emergency contact?')) return;
+            const confirmed = await customConfirm('Delete Contact?', 'Are you sure you want to delete this emergency contact?', 'Delete', 'Cancel');
+            if (!confirmed) return;
             tripData.emergencyContacts = tripData.emergencyContacts.filter(c => c.id !== id);
             await saveData();
             renderEmergencyContacts();
@@ -4929,6 +5067,66 @@
 
         // Group Functions
         // Group & Invitation Functions
+        
+        function filterGroupContent(query) {
+            const lowerQuery = query.toLowerCase().trim();
+            
+            // Filter members
+            const memberCards = document.querySelectorAll('#membersGrid .member-card');
+            let visibleMembers = 0;
+            memberCards.forEach(card => {
+                const name = card.getAttribute('data-member-name') || '';
+                const email = card.getAttribute('data-member-email') || '';
+                const matches = name.includes(lowerQuery) || email.includes(lowerQuery);
+                card.style.display = matches ? '' : 'none';
+                if (matches) visibleMembers++;
+            });
+            
+            // Show/hide members card if no results
+            const membersCard = document.getElementById('membersCard');
+            if (membersCard && memberCards.length > 0) {
+                membersCard.style.display = visibleMembers > 0 ? '' : 'none';
+            }
+            
+            // Filter emergency contacts
+            const emergencyContacts = document.querySelectorAll('#emergencyContactsList > div');
+            let visibleContacts = 0;
+            emergencyContacts.forEach(contact => {
+                const text = contact.textContent.toLowerCase();
+                const matches = text.includes(lowerQuery);
+                contact.style.display = matches ? '' : 'none';
+                if (matches) visibleContacts++;
+            });
+            
+            // Show/hide emergency card if no results
+            const emergencyCard = document.getElementById('emergencyCard');
+            if (emergencyCard && emergencyContacts.length > 0) {
+                emergencyCard.style.display = visibleContacts > 0 ? '' : 'none';
+            }
+            
+            // Show "no results" message if nothing found
+            if (lowerQuery && visibleMembers === 0 && visibleContacts === 0) {
+                let noResultsMsg = document.getElementById('groupNoResults');
+                if (!noResultsMsg) {
+                    noResultsMsg = document.createElement('div');
+                    noResultsMsg.id = 'groupNoResults';
+                    noResultsMsg.style.cssText = 'text-align: center; padding: 60px 20px; color: var(--text-secondary);';
+                    noResultsMsg.innerHTML = `
+                        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">🔍</div>
+                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">No results found</div>
+                        <div style="font-size: 14px;">Try a different search term</div>
+                    `;
+                    document.getElementById('membersGrid').parentElement.after(noResultsMsg);
+                }
+                noResultsMsg.style.display = 'block';
+            } else {
+                const noResultsMsg = document.getElementById('groupNoResults');
+                if (noResultsMsg) noResultsMsg.style.display = 'none';
+            }
+        }
+        
+        window.filterGroupContent = filterGroupContent;
+        
         function addGroupMemberManual() {
             showModal(`
                 <div class="modal-header">
@@ -5439,7 +5637,7 @@
                 const currentUserIsOwner = user ? tripData.group.some(m => m.email === user.email && m.inviteStatus === 'owner') : false;
                 
                 return `
-                    <div class="member-card">
+                    <div class="member-card" data-member-name="${(member.name || '').toLowerCase()}" data-member-email="${(member.email || '').toLowerCase()}">
                         <div class="member-card-header">
                             <div>
                                 <div class="member-avatar">${initials}</div>

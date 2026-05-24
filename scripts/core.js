@@ -2225,6 +2225,13 @@
                     }
                     break;
                     
+                case 'todos':
+                    tripData.todos = newData;
+                    if (currentPage === 'todos') {
+                        renderTodos();
+                    }
+                    break;
+                    
                 case 'shared_checklist':
                     tripData.sharedChecklist = newData;
                     if (currentPage === 'todos' || currentPage === 'overview') {
@@ -2232,8 +2239,26 @@
                     }
                     break;
                     
-                case 'emergency_contacts':
-                    // This is in trips table, will be handled by trips channel
+                case 'group':
+                    tripData.group = newData;
+                    if (currentPage === 'group') {
+                        renderGroupMembers();
+                        updateGroupStats();
+                    }
+                    break;
+                    
+                case 'shared_expenses':
+                    tripData.sharedExpenses = newData;
+                    if (currentPage === 'budget') {
+                        renderSharedExpenses();
+                    }
+                    break;
+                    
+                case 'documents':
+                    tripData.documents = newData;
+                    if (currentPage === 'overview') {
+                        renderDocuments();
+                    }
                     break;
                     
                 default:

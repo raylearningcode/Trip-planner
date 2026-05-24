@@ -8492,6 +8492,46 @@
             // Setup real-time subscriptions (replaces polling)
             setupRealtime();
             
+            // SYNC ON TAB FOCUS: Reload when user comes back to tab
+            // This ensures they see latest data if they were away
+            document.addEventListener('visibilitychange', async () => {
+                if (!document.hidden && currentTrip) {
+                    console.log('👁️ Tab visible again, syncing...');
+                    await loadData();
+                    
+                    // Do a quick selective render based on current page
+                    switch(currentPage) {
+                        case 'budget':
+                            renderBudgetTable();
+                            renderSavingsTable();
+                            updateAllStats();
+                            break;
+                        case 'itinerary':
+                            renderDayPlans();
+                            break;
+                        case 'destinations':
+                            renderDestinations();
+                            break;
+                        case 'bookings':
+                            renderBookings();
+                            break;
+                        case 'packing':
+                            renderPackingList();
+                            break;
+                        case 'group':
+                            renderGroupMembers();
+                            break;
+                        case 'todos':
+                            renderTodos();
+                            renderSharedChecklist();
+                            break;
+                        default:
+                            updateOverviewSummary();
+                    }
+                    console.log('✅ Tab sync complete');
+                }
+            });
+            
             console.log('✅ App initialized with real-time updates');
             
             // Show onboarding for first-time users

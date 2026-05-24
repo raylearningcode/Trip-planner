@@ -336,7 +336,7 @@
         });
         
         // Check if Supabase loaded
-        if (typeof supabase === 'undefined') {
+        if (typeof window.supabase === 'undefined') {
             console.error('❌ Supabase SDK not loaded!');
             alert('ERROR: Supabase SDK failed to load. Check internet connection.');
         } else {
@@ -730,7 +730,11 @@
         console.log('🔧 Initializing Supabase client...');
         let sb;
         try {
-            sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            // Access Supabase from window (loaded from CDN)
+            if (!window.supabase) {
+                throw new Error('Supabase SDK not loaded from CDN');
+            }
+            sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             console.log('✅ Supabase client created:', sb);
         } catch (err) {
             console.error('❌ Failed to create Supabase client:', err);
